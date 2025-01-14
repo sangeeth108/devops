@@ -9,6 +9,17 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
+    match: [/.+@.+\..+/, 'Please enter a valid email address.'],
+  },
+  UserID: {
+    type: String,
+    unique: true,
+    sparse: true, // Allows multiple users with TeacherID while having unique StudentIDs
+  },
+  RestaurantOwnerID: {
+    type: String,
+    unique: true,
+    sparse: true, // Allows multiple users with StudentID while having unique TeacherIDs
   },
   password: {
     type: String,
