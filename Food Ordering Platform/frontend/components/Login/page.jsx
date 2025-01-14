@@ -58,14 +58,13 @@ const LoginPage = () => {
         localStorage.setItem("role", data.type);
         localStorage.setItem("loggedIn", "true");
 
-        if (data.type === "teacher")
-          localStorage.setItem("TeacherID", data.TeacherID);
-        if (data.type === "student")
-          localStorage.setItem("StudentID", data.StudentID);
+        if (data.type === "restaurantOwner")
+          localStorage.setItem("RestaurantOwnerID", data.RestaurantOwnerID);
+        if (data.type === "user")
+          localStorage.setItem("UserID", data.UserID);
 
-        if (data.type === "admin") router.push("/admin");
-        else if (data.type === "teacher") router.push("/teachers");
-        else if (data.type === "student") router.push("/student");
+        if (data.type === "restaurantOwner") router.push("/restaurant");
+        else if (data.type === "user") router.push("/user");
       } else {
         alert("Login failed. Please check your credentials.");
       }
