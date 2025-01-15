@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useState } from "react";
 import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
+import { BiChevronDown } from "react-icons/bi";
 
 const SignupPage = () => {
-  // Independent states for each input field
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [role, setRole] = useState("User");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -30,6 +32,7 @@ const SignupPage = () => {
       lastName,
       email,
       phoneNumber,
+      role,
       password,
     });
     alert("Signup successful!");
@@ -100,6 +103,40 @@ const SignupPage = () => {
             className="w-full px-4 py-3 text-gray-700 bg-gray-100 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-600"
             required
           />
+        </div>
+
+        {/* Role Dropdown */}
+        <div className="mb-8 relative">
+          <button
+            type="button"
+            className="w-full px-4 py-3 flex items-center justify-between bg-gray-100 text-gray-700 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          >
+            {role}
+            <BiChevronDown size={24} />
+          </button>
+          {isDropdownOpen && (
+            <ul className="absolute text-gray-400 w-full bg-white shadow-lg rounded-xl mt-2 border border-gray-300 z-50">
+              <li
+                className="px-4 py-3 hover:bg-blue-100 cursor-pointer rounded-t-xl"
+                onClick={() => {
+                  setRole("User");
+                  setIsDropdownOpen(false);
+                }}
+              >
+                User
+              </li>
+              <li
+                className="px-4 py-3 hover:bg-blue-100 cursor-pointer rounded-b-xl"
+                onClick={() => {
+                  setRole("Restaurant Owner");
+                  setIsDropdownOpen(false);
+                }}
+              >
+                Restaurant Owner
+              </li>
+            </ul>
+          )}
         </div>
 
         {/* Password */}
