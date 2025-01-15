@@ -94,7 +94,7 @@ const LoginPage = () => {
         <div className="mb-6">
           <input
             type="email"
-            placeholder="User name or email"
+            placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-3 text-gray-700 bg-gray-100 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-600"

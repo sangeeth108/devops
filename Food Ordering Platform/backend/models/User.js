@@ -1,7 +1,11 @@
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
-  name: {
+  firstName: {
+    type: String,
+    required: true,
+  },
+  lastName: {
     type: String,
     required: true,
   },
@@ -11,12 +15,16 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     match: [/.+@.+\..+/, 'Please enter a valid email address.'],
   },
-  UserID: {
+  phoneNumber: {
+    type: String,
+    required: true,
+  },
+  userID: {
     type: String,
     unique: true,
     sparse: true, // Allows multiple users with TeacherID while having unique StudentIDs
   },
-  RestaurantOwnerID: {
+  restaurantOwnerID: {
     type: String,
     unique: true,
     sparse: true, // Allows multiple users with StudentID while having unique TeacherIDs
