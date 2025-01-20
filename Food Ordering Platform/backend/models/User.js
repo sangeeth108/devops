@@ -19,25 +19,15 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  userID: {
-    type: String,
-    unique: true,
-    sparse: true, // Allows multiple users with TeacherID while having unique StudentIDs
-  },
-  restaurantOwnerID: {
-    type: String,
-    unique: true,
-    sparse: true, // Allows multiple users with StudentID while having unique TeacherIDs
-  },
   password: {
     type: String,
     required: true,
   },
   role: {
     type: String,
-    enum: ['user', 'restaurantOwner'],
+    enum: ['user', 'restaurantowner'],
     default: 'user',
   },
-});
+}, { timestamps: true }); // Adds createdAt and updatedAt fields
 
 module.exports = mongoose.model('User', UserSchema);

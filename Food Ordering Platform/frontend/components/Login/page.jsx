@@ -58,12 +58,12 @@ const LoginPage = () => {
         localStorage.setItem("role", data.type);
         localStorage.setItem("loggedIn", "true");
 
-        if (data.type === "restaurantOwner")
+        if (data.type === "restaurantowner")
           localStorage.setItem("RestaurantOwnerID", data.RestaurantOwnerID);
         if (data.type === "user")
           localStorage.setItem("UserID", data.UserID);
 
-        if (data.type === "restaurantOwner") router.push("/restaurant");
+        if (data.type === "restaurantowner") router.push("/restaurant");
         else if (data.type === "user") router.push("/user");
       } else {
         alert("Login failed. Please check your credentials.");

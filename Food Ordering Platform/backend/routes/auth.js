@@ -12,33 +12,65 @@ const router = express.Router();
 // @route   POST /api/auth/signup
 // @desc    Register user
 router.post('/api/auth/signup', async (req, res) => {
-  const { name, email, password, role } = req.body;
-  
+  const { firstName, lastName, email, password, role, phoneNumber } = req.body;
+
   try {
+    // Check if user already exists
     let user = await User.findOne({ email });
     if (user) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    user = new User({ name, email, password, role });
+    // Create new user
+    user = new User({
+      firstName,
+      lastName,
+      email,
+      phoneNumber,
+      role: role.toLowerCase(),
+      password,
+    });
 
+    // Hash the password
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(password, salt);
 
+    // Save user to database
     await user.save();
 
-    const payload = { user: { id: user.id, role: user.role } }; // Include role in payload
+    // Create JWT payload
+    const payload = {
+      user: {
+        id: user.id,
+        role: user.role,
+      },
+    };
 
-    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' }, (err, token) => {
-      if (err) throw err;
-      res.status(200).json({ token, user }); // Return the user object along with the token
-    });
+    // Sign and return JWT
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' },
+      (err, token) => {
+        if (err) throw err;
+        res.status(201).json({
+          token,
+          user: {
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phoneNumber: user.phoneNumber,
+            role: user.role,
+          },
+        });
+      }
+    );
   } catch (err) {
-    console.error(err); // Log the error for debugging
+    console.error(err.message);
     res.status(500).send('Server error');
   }
 });
-
 
 // @route   POST /api/auth/login
 // @desc    Authenticate user & get token

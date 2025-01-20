@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import { BiChevronDown } from "react-icons/bi";
+import { useRouter } from "next/navigation";
+
 
 const SignupPage = () => {
   const [firstName, setFirstName] = useState("");
@@ -16,6 +18,8 @@ const SignupPage = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const router = useRouter(); // Initialize the router
+
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   const handleSubmit = async (e) => {
@@ -27,15 +31,42 @@ const SignupPage = () => {
     }
 
     // Handle signup process
-    console.log({
+    const signupData = {
       firstName,
       lastName,
       email,
       phoneNumber,
       role,
       password,
-    });
-    alert("Signup successful!");
+    };
+
+    // Make a POST request to the signup API
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(signupData),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert("Signup successful!");
+        
+        // Redirect based on role
+        if (role === "user") {
+          router.push("/UserDashboard"); // Redirect to User Dashboard
+        } else if (role === "restaurantowner") {
+          router.push("/OwnerDashboard"); // Redirect to Owner Dashboard
+        }
+      } else {
+        alert(data.message || "Signup failed. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error during signup:", error);
+      alert("An error occurred. Please try again.");
+    }
   };
 
   return (
@@ -120,7 +151,7 @@ const SignupPage = () => {
               <li
                 className="px-4 py-3 hover:bg-blue-100 cursor-pointer rounded-t-xl"
                 onClick={() => {
-                  setRole("User");
+                  setRole("user");
                   setIsDropdownOpen(false);
                 }}
               >
@@ -129,7 +160,7 @@ const SignupPage = () => {
               <li
                 className="px-4 py-3 hover:bg-blue-100 cursor-pointer rounded-b-xl"
                 onClick={() => {
-                  setRole("Restaurant Owner");
+                  setRole("restaurantowner");
                   setIsDropdownOpen(false);
                 }}
               >

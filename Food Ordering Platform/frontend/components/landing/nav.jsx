@@ -8,10 +8,10 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const loginHandel = () => {
-    router.push("@/app/Login/page");
+    router.push("/Login");
   };
   const signupHandel = () => {
-    router.push("./app/Signup/page");
+    router.push("/Signup");
   };
 
   return (
