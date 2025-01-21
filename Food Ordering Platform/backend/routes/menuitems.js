@@ -78,5 +78,29 @@ router.get('/menu-items', async (req, res) => {
 });
 
 
+router.get('/search', async (req, res) => {
+    try {
+      const { query } = req.query; // Retrieve search query from query string
+      if (!query) {
+        return res.status(400).json({ error: 'Query parameter is required' });
+      }
+  
+      // Search by partial name match or description
+      const items = await MenuItem.find({
+        $or: [
+          { name: new RegExp(query, 'i') }, // 'i' for case-insensitive
+          { description: new RegExp(query, 'i') }
+        ]
+      });
+  
+      res.json(items);
+    } catch (err) {
+      res.status(500).json({ error: 'Server error', details: err.message });
+    }
+  });
+
+
+
+
   
   module.exports = router;

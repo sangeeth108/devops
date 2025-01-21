@@ -45,17 +45,19 @@ const LoginPage = () => {
       const data = await response.json();
 
       if (response.ok) {
-        alert("Login successful");
         localStorage.setItem("token", data.token);
         localStorage.setItem("role", data.user.role);
+        localStorage.setItem("name", data.user.firstName);
+        localStorage.setItem("userid", data.user._id);
         localStorage.setItem("loggedIn", "true");
+
 
         if (data.user.role === "restaurantowner") {
           localStorage.setItem("RestaurantOwnerID", data.user._id);
           router.push("/OwnerDashboard");
         } else if (data.user.role === "user") {
           localStorage.setItem("UserID", data.user._id);
-          router.push("/UserDashboard");
+          router.push("/");
         }
       } else {
         alert(data.message || "Login failed. Please check your credentials.");
