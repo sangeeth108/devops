@@ -20,18 +20,18 @@ const Navbar = () => {
         <span className="self-center text-2xl font-semibold text-white whitespace-nowrap">
           QUICK BITE
         </span>
-        <div className="mr-4 flex space-x-3 md:order-2 md:space-x-0">
+        <div className="mr-4 ml-4 gap-x-2 flex space-x-3 md:order-2 md:space-x-0">
         <button
             onClick={signupHandel}
             type="button"
-            className="inline-flex items-center p-2 ml-3 text-lg  text-center  md:text-sm font-bold bg-gray-200 text-blue-700 rounded-full hover:bg-blue-600 hover:text-white"
+            className="inline-flex items-center p-2 text-lg  text-center  md:text-sm font-bold bg-gray-200 text-blue-700 rounded-full hover:bg-blue-600 hover:text-white"
           >
             Signup
           </button>
           <button
             onClick={loginHandel}
             type="button"
-            className="inline-flex items-center p-2 ml-3 text-lg  text-center  md:text-sm font-bold bg-gray-200 text-blue-700 rounded-full hover:bg-blue-600 hover:text-white"
+            className="inline-flex items-center p-2 text-lg  text-center  md:text-sm font-bold bg-gray-200 text-blue-700 rounded-full hover:bg-blue-600 hover:text-white"
           >
             Login
           </button>
