@@ -121,6 +121,4 @@ router.post('/api/auth/logout', auth, (req, res) => {
 
 
 
-
-
 module.exports = router;
