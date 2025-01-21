@@ -12,7 +12,7 @@ const SignupPage = () => {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [role, setRole] = useState("User");
+  const [role, setRole] = useState("user");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
