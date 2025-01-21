@@ -73,7 +73,7 @@ const SignupPage = () => {
     <div className="flex flex-col items-center justify-center min-h-screen bg-white px-4 md:px-8 lg:px-16">
       {/* Home Button */}
       <Link href="/">
-        <button className="absolute top-5 right-5 px-4 py-2 text-xs font-bold bg-gray-200 text-blue-700 rounded-full hover:bg-blue-600 hover:text-white md:px-6 md:py-3 md:text-sm">
+        <button className="absolute top-5 right-5 px-4 py-2 text-xs font-bold bg-gray-200 text-blue-800 rounded-full hover:bg-blue-700 hover:text-white md:px-6 md:py-3 md:text-sm">
           HOME
         </button>
       </Link>
@@ -219,7 +219,7 @@ const SignupPage = () => {
         {/* Submit Button */}
         <button
           type="submit"
-          className="w-full px-4 py-3 font-bold text-white bg-blue-600 rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
+          className="w-full px-4 py-3 font-bold text-white bg-blue-800 rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
         >
           SIGNUP
         </button>
