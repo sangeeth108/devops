@@ -70,7 +70,7 @@ const LoginPage = () => {
     <div className="flex flex-col items-center justify-center h-screen bg-white px-4">
       {/* HOME button */}
       <Link href="/">
-        <button className="absolute top-5 right-5 px-4 py-2 text-xs md:px-10 md:py-2 md:text-sm font-bold bg-gray-200 text-blue-700 rounded-full hover:bg-blue-600 hover:text-white">
+        <button className="absolute top-5 right-5 px-4 py-2 text-xs md:px-10 md:py-2 md:text-sm font-bold bg-gray-200 text-blue-800 rounded-full hover:bg-blue-700 hover:text-white">
           HOME
         </button>
       </Link>

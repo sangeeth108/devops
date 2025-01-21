@@ -15,7 +15,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 z-20 w-full border-b bg-blue-700 backdrop-blur-sm">
+    <nav className="fixed top-0 z-20 w-full border-b bg-blue-800 backdrop-blur-sm">
       <div className="flex flex-wrap items-center justify-between max-w-screen-xl p-4 mx-auto">
         <span className="self-center text-2xl font-semibold text-white whitespace-nowrap">
           QUICK BITE
@@ -24,14 +24,14 @@ const Navbar = () => {
         <button
             onClick={signupHandel}
             type="button"
-            className="inline-flex items-center p-2 text-lg  text-center  md:text-sm font-bold bg-gray-200 text-blue-700 rounded-full hover:bg-blue-600 hover:text-white"
+            className="inline-flex items-center p-2 text-lg  text-center  md:text-sm font-bold bg-gray-200 text-blue-800 rounded-full hover:bg-blue-950 hover:text-white"
           >
             Signup
           </button>
           <button
             onClick={loginHandel}
             type="button"
-            className="inline-flex items-center p-2 text-lg  text-center  md:text-sm font-bold bg-gray-200 text-blue-700 rounded-full hover:bg-blue-600 hover:text-white"
+            className="inline-flex items-center p-2 text-lg  text-center  md:text-sm font-bold bg-gray-200 text-blue-800 rounded-full hover:bg-blue-950 hover:text-white"
           >
             Login
           </button>
