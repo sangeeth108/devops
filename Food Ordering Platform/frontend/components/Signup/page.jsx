@@ -52,11 +52,14 @@ const SignupPage = () => {
 
       const data = await response.json();
       if (response.ok) {
-        alert("Signup successful!");
-        
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("role", data.user.role);
+        localStorage.setItem("name", data.user.firstName);
+        localStorage.setItem("userid", data.user._id);
+        localStorage.setItem("loggedIn", "true");
         // Redirect based on role
         if (role === "user") {
-          router.push("/UserDashboard"); // Redirect to User Dashboard
+          router.push("/"); // Redirect to User Dashboard
         } else if (role === "restaurantowner") {
           router.push("/OwnerDashboard"); // Redirect to Owner Dashboard
         }

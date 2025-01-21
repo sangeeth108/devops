@@ -1,10 +1,17 @@
-// pages/index.js
 import Image from 'next/image';
-import burgerImage from "../../public/assets/images/hero.png"; // Replace with the burger image
+import { useEffect, useState } from 'react';  // for managing login state
+import burgerImage from "../../public/assets/images/hero.png";
 import AppStore from '../../public/assets/images/AppStore.png';
-import GooglePlay from '../../public/assets/images/GooglePlay.png';  // Replace with the app preview image
+import GooglePlay from '../../public/assets/images/GooglePlay.png';
 
 export default function Home() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const loggedInStatus = localStorage.getItem("loggedIn") === "true";
+    setIsLoggedIn(loggedInStatus);
+  }, []);  // Runs only once to check login status
+
   return (
     <div className="bg-gray-100">
       {/* Header Section */}
@@ -21,7 +28,7 @@ export default function Home() {
           </div>
         </div>
       </div>
-
+      
       {/* Search Section */}
       <div className="-mt-20 relative z-10">
         <div className="bg-white shadow-lg rounded-lg mx-auto max-w-screen-md p-8">
@@ -31,22 +38,22 @@ export default function Home() {
           <p className="text-gray-600 text-center mb-6">
             Food is just a click away!
           </p>
-          <div className="flex items-center space-x-2">
-            <input
-              type="text"
-              placeholder="Search by City or Town"
-              className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring focus:ring-blue-500"
-            />
-            <button
-              className="px-6 py-3 bg-blue-800 text-white rounded-lg hover:bg-green-700 focus:outline-none"
-            >
-              Search
-            </button>
-            <button
-              className="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 focus:outline-none"
-            >
-              Reset
-            </button>
+          <div className="flex justify-center items-center">
+            {isLoggedIn ? (
+              <button
+                className="px-6 py-3 bg-blue-800 text-white rounded-lg hover:bg-green-700 focus:outline-none"
+                onClick={() => window.location.href = '/MenuItems'}  // Redirects to login page
+              >
+                Find Foods
+              </button>
+            ) : (
+              <button
+                className="px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-blue-700 focus:outline-none"
+                onClick={() => window.location.href = '/Login'}  // Redirects to login page
+              >
+                Login to Find Foods
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -62,7 +69,6 @@ export default function Home() {
           </p>
         </div>
         <div className="flex justify-center space-x-4">
-         
           <Image
             src={AppStore}
             alt="App Preview"
