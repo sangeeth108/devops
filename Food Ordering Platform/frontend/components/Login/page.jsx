@@ -10,23 +10,16 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [isClient, setIsClient] = useState(false); // Added for client-only checks
 
   const router = useRouter();
 
   useEffect(() => {
-    setIsClient(true); // Ensures we are on the client side
-  }, []);
-
-  useEffect(() => {
-    if (isClient) {
-      const savedEmail = localStorage.getItem("email");
-      if (savedEmail) {
-        setEmail(savedEmail);
-        setRememberMe(true);
-      }
+    const savedEmail = localStorage.getItem("email");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
     }
-  }, [isClient]);
+  }, []);
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
@@ -45,28 +38,27 @@ const LoginPage = () => {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
-          "Access-Control-Allow-Origin": "*",
         },
         body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
-      if (data.status === "ok") {
+      if (response.ok) {
         alert("Login successful");
-        localStorage.setItem("token", data.data);
-        localStorage.setItem("role", data.type);
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("role", data.user.role);
         localStorage.setItem("loggedIn", "true");
 
-        if (data.type === "restaurantowner")
-          localStorage.setItem("RestaurantOwnerID", data.RestaurantOwnerID);
-        if (data.type === "user")
-          localStorage.setItem("UserID", data.UserID);
-
-        if (data.type === "restaurantowner") router.push("/restaurant");
-        else if (data.type === "user") router.push("/user");
+        if (data.user.role === "restaurantowner") {
+          localStorage.setItem("RestaurantOwnerID", data.user._id);
+          router.push("/OwnerDashboard");
+        } else if (data.user.role === "user") {
+          localStorage.setItem("UserID", data.user._id);
+          router.push("/UserDashboard");
+        }
       } else {
-        alert("Login failed. Please check your credentials.");
+        alert(data.message || "Login failed. Please check your credentials.");
       }
     } catch (error) {
       console.error("Error during login:", error);
