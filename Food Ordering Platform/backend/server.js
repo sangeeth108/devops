@@ -14,8 +14,17 @@ app.use(cors());
 // Middleware
 app.use(express.json());
 
+
+
+
+
 // Define routes
 app.use( require('./routes/auth'));
+app.use( require('./routes/menuitems'));
+app.use( require('./routes/cart'));
+
+
+
 
 const PORT = process.env.PORT || 5000;
 

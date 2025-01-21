@@ -6,11 +6,6 @@ const OrderSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
-  restaurant: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Restaurant',
-    required: true,
-  },
   items: [
     {
       menuItem: {
@@ -27,11 +22,6 @@ const OrderSchema = new mongoose.Schema({
   totalAmount: {
     type: Number,
     required: true,
-  },
-  status: {
-    type: String,
-    enum: ['pending', 'confirmed', 'preparing', 'out-for-delivery', 'delivered', 'cancelled'],
-    default: 'pending',
   },
   createdAt: {
     type: Date,

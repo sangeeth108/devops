@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const MenuItemSchema = new mongoose.Schema({
-  restaurant: {
+  owner: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Restaurant',
+    ref: 'User',
     required: true,
   },
   name: {
@@ -20,6 +20,9 @@ const MenuItemSchema = new mongoose.Schema({
   image: {
     type: String,
   },
+  quantity: {
+    type: Number,
+  }
 });
 
 module.exports = mongoose.model('MenuItem', MenuItemSchema);
