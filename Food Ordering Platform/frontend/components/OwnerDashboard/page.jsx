@@ -62,65 +62,79 @@ const OwnerDashboard = () => {
   };
 
   return (
-    <div>
-      <div className="mt-16">
-        <h1>Owner Dashboard</h1>
-        <h1>{userName}</h1>
-        <form onSubmit={handleSubmit} className="my-8">
+    <div className="min-h-screen bg-gray-100 py-10 px-4">
+      <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-8">
+        <h1 className="text-3xl font-bold text-gray-800 text-center mb-4">
+          Owner Dashboard
+        </h1>
+        <h2 className="text-xl text-gray-600 text-center mb-8">
+          Welcome, {userName}
+        </h2>
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6"
+        >
           <div>
-            <label>Item Name</label>
+            <label className="block text-gray-700 font-medium mb-2">Item Name</label>
             <input
               type="text"
               value={itemName}
               onChange={(e) => setItemName(e.target.value)}
               required
-              style={{ color: 'black' }}
+              className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-300"
             />
           </div>
           <div>
-            <label>Description</label>
+            <label className="block text-gray-700 font-medium mb-2">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required
-              style={{ color: 'black' }}
+              className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-300"
+              rows="4"
             ></textarea>
           </div>
           <div>
-            <label>Price</label>
+            <label className="block text-gray-700 font-medium mb-2">Price</label>
             <input
               type="number"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               required
-              style={{ color: 'black' }}
+              className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-300"
             />
           </div>
           <div>
-            <label>Quantity</label>
+            <label className="block text-gray-700 font-medium mb-2">Quantity</label>
             <input
               type="number"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               min="1"
               required
-              style={{ color: 'black' }}
+              className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-300"
             />
           </div>
           <div>
-            <label>Image</label>
+            <label className="block text-gray-700 font-medium mb-2">Image URL</label>
             <input
               type="text"
               value={image}
               onChange={(e) => setImage(e.target.value)}
-              style={{ color: 'black' }}
+              className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-300"
             />
           </div>
-          <button type="submit">Add Item</button>
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 focus:ring focus:ring-blue-300"
+          >
+            Add Item
+          </button>
         </form>
       </div>
     </div>
   );
+  
   
   
 };
