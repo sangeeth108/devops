@@ -1,17 +1,24 @@
 "use client";
-import Image from 'next/image';
-import { useEffect, useState } from 'react';  // for managing login state
+import Image from "next/image";
+import { useEffect, useState } from "react"; // for managing login state
+import { useRouter } from "next/navigation"; // for routing
 import burgerImage from "../../public/assets/images/hero.png";
-import AppStore from '../../public/assets/images/AppStore.png';
-import GooglePlay from '../../public/assets/images/GooglePlay.png';
+import AppStore from "../../public/assets/images/AppStore.png";
+import GooglePlay from "../../public/assets/images/GooglePlay.png";
 
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [role, setRole] = useState(""); // state for user role
+  const router = useRouter();
 
   useEffect(() => {
     const loggedInStatus = localStorage.getItem("loggedIn") === "true";
     setIsLoggedIn(loggedInStatus);
-  }, []);  // Runs only once to check login status
+    if (loggedInStatus) {
+      const userRole = localStorage.getItem("role");
+      setRole(userRole);
+    }
+  }, []); // Runs only once to check login status
 
   return (
     <div className="bg-gray-100">
@@ -29,7 +36,7 @@ export default function Home() {
           </div>
         </div>
       </div>
-      
+
       {/* Search Section */}
       <div className="-mt-20 relative z-10">
         <div className="bg-white shadow-lg rounded-lg mx-auto max-w-screen-md p-8">
@@ -41,16 +48,25 @@ export default function Home() {
           </p>
           <div className="flex justify-center items-center">
             {isLoggedIn ? (
-              <button
-                className="px-6 py-3 bg-blue-800 text-white rounded-lg hover:bg-green-700 focus:outline-none"
-                onClick={() => window.location.href = '/MenuItems'}  // Redirects to login page
-              >
-                Find Foods
-              </button>
+              role === "restaurantowner" ? (
+                <button
+                  className="px-6 py-3 bg-blue-800 text-white rounded-lg hover:bg-green-700 focus:outline-none"
+                  onClick={() => router.push("/OwnerDashboard")} // Redirect to Owner Dashboard
+                >
+                  Go to Dashboard
+                </button>
+              ) : (
+                <button
+                  className="px-6 py-3 bg-blue-800 text-white rounded-lg hover:bg-green-700 focus:outline-none"
+                  onClick={() => router.push("/MenuItems")} // Redirect to Menu Items
+                >
+                  Find Foods
+                </button>
+              )
             ) : (
               <button
                 className="px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-blue-700 focus:outline-none"
-                onClick={() => window.location.href = '/Login'}  // Redirects to login page
+                onClick={() => router.push("/Login")} // Redirects to Login page
               >
                 Login to Find Foods
               </button>
@@ -66,7 +82,8 @@ export default function Home() {
             Order takeaway even faster!
           </h2>
           <p className="text-gray-600">
-            Download the MernEats App for faster ordering and personalised recommendations
+            Download the MernEats App for faster ordering and personalised
+            recommendations
           </p>
         </div>
         <div className="flex justify-center space-x-4">

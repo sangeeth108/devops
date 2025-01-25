@@ -55,7 +55,7 @@ const SignupPage = () => {
         localStorage.setItem("token", data.token);
         localStorage.setItem("role", data.user.role);
         localStorage.setItem("name", data.user.firstName);
-        localStorage.setItem("userid", data.user._id);
+        localStorage.setItem("userid", data.user.id);
         localStorage.setItem("loggedIn", "true");
         // Redirect based on role
         if (role === "user") {
