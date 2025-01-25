@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies with retry logic and update npm
-RUN npm install -g npm@latest && \
+# Update npm to the latest compatible version (10.x) and install dependencies
+RUN npm install -g npm@10 && \
     npm install || npm install
 
 # Copy app files
