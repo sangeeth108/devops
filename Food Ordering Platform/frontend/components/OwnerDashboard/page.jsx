@@ -37,7 +37,7 @@ const OwnerDashboard = () => {
     };
 
     try {
-      const response = await fetch("http://localhost:5000/create/menu-items", {
+      const response = await fetch("http://143.244.136.237:5000/create/menu-items", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

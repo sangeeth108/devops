@@ -8,7 +8,7 @@ const Page = () => {
   useEffect(() => {
     const fetchMenuItems = async () => {
       try {
-        const response = await fetch('http://localhost:5000/menu-items');
+        const response = await fetch('http://143.244.136.237:5000/menu-items');
         if (!response.ok) {
           throw new Error('Failed to fetch menu items');
         }

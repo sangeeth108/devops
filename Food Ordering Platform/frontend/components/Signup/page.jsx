@@ -42,7 +42,7 @@ const SignupPage = () => {
 
     // Make a POST request to the signup API
     try {
-      const response = await fetch("http://localhost:5000/api/auth/signup", {
+      const response = await fetch("http://143.244.136.237:5000/api/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
