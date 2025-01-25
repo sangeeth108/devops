@@ -7,8 +7,9 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies with retry logic and update npm
+RUN npm install -g npm@latest && \
+    npm install || npm install
 
 # Copy app files
 COPY . .
