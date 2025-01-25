@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials') // DockerHub credentials
+        SERVER_CREDENTIALS = credentials('server-credentials') // Remote server credentials
+        BACKEND_IMAGE = "sangeeth108/express-backend"
+        FRONTEND_IMAGE = "sangeeth108/nextjs-frontend"
+        REMOTE_HOST = "143.244.136.237"
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Build and Push Backend Image') {
+            steps {
+                dir('backend') {
+                    sh 'docker build -t ${BACKEND_IMAGE} .'
+                    sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+                    sh 'docker push ${BACKEND_IMAGE}'
+                }
+            }
+        }
+        stage('Build and Push Frontend Image') {
+            steps {
+                dir('frontend') {
+                    sh 'docker build -t ${FRONTEND_IMAGE} .'
+                    sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+                    sh 'docker push ${FRONTEND_IMAGE}'
+                }
+            }
+        }
+        stage('Deploy to Remote Server') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'server-credentials', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
+                    sh """
+                    sshpass -p $SSH_PASS ssh -o StrictHostKeyChecking=no $SSH_USER@${REMOTE_HOST} << EOF
+                    docker pull ${BACKEND_IMAGE}
+                    docker pull ${FRONTEND_IMAGE}
+                    docker stop backend || true && docker rm backend || true
+                    docker stop frontend || true && docker rm frontend || true
+                    docker run -d -p 5000:5000 --name backend ${BACKEND_IMAGE}
+                    docker run -d -p 3000:3000 --name frontend ${FRONTEND_IMAGE}
+                    EOF
+                    """
+                }
+            }
+        }
+    }
+}
