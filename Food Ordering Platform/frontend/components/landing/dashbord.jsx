@@ -1,3 +1,4 @@
+"use client";
 import Image from 'next/image';
 import { useEffect, useState } from 'react';  // for managing login state
 import burgerImage from "../../public/assets/images/hero.png";
