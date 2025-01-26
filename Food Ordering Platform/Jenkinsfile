@@ -7,6 +7,7 @@ pipeline {
         BACKEND_IMAGE = "sangeeth108/express-backend"
         FRONTEND_IMAGE = "sangeeth108/nextjs-frontend"
         REMOTE_HOST = "143.244.136.237"
+        DOCKER_BUILDKIT = '0'
     }
 
     stages {
@@ -15,50 +16,39 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Login to DockerHub') {
+        stage('Build and Push Backend Image') {
             steps {
-                script {
-                    // Docker login to DockerHub
-                    sh """
+                dir('Food Ordering Platform/backend') {
+                    sh '''
                         echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-                    """
+                        docker push ${BACKEND_IMAGE}
+                    '''
                 }
             }
         }
-        stage('Pull Backend and Frontend Images') {
+        stage('Build and Push Frontend Image') {
             steps {
-                script {
-                    // Pull the backend and frontend images from DockerHub
-                    sh """
-                        docker pull ${BACKEND_IMAGE}
-                        docker pull ${FRONTEND_IMAGE}
-                    """
+                dir('Food Ordering Platform/frontend') {
+                    sh '''
+                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                        docker push ${FRONTEND_IMAGE}
+                    '''
                 }
             }
         }
         stage('Deploy to Remote Server') {
-    steps {
-        withCredentials([usernamePassword(credentialsId: 'server-credentials', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
-            sh """
-            sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no ${SSH_USER}@${REMOTE_HOST} <<'EOF'
-            # Pull backend and frontend images
-            docker pull ${BACKEND_IMAGE}
-            docker pull ${FRONTEND_IMAGE}
-
-            # Stop and remove existing containers if they exist
-            docker ps -a --filter "name=backend" --format '{{.ID}}' | xargs -r docker stop | xargs -r docker rm
-            docker ps -a --filter "name=frontend" --format '{{.ID}}' | xargs -r docker stop | xargs -r docker rm
-
-            # Run the containers
-            docker run -d -p 5000:5000 --name backend ${BACKEND_IMAGE}
-            docker run -d -p 3000:3000 --name frontend ${FRONTEND_IMAGE}
-            EOF
-            """
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'server-credentials', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
+                    sh """
+                    sshpass -p $SSH_PASS ssh -o StrictHostKeyChecking=no $SSH_USER@${REMOTE_HOST} << EOF
+                    docker pull ${BACKEND_IMAGE}
+                    docker pull ${FRONTEND_IMAGE}
+                    docker run -d -p 5000:5000 --name backend ${BACKEND_IMAGE}
+                    docker run -d -p 3000:3000 --name frontend ${FRONTEND_IMAGE}
+                    EOF
+                    """
+                }
+            }
         }
-    }
-}
-
-
-
     }
 }
