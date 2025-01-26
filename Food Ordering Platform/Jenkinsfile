@@ -7,7 +7,7 @@ pipeline {
         BACKEND_IMAGE = "sangeeth108/express-backend"
         FRONTEND_IMAGE = "sangeeth108/nextjs-frontend"
         REMOTE_HOST = "143.244.136.237"
-        DOCKER_BUILDKIT = '1' // Enable Docker BuildKit
+        DOCKER_BUILDKIT = '0'
     }
 
     stages {
