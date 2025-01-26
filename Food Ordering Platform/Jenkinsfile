@@ -63,30 +63,27 @@ pipeline {
         }
 
         stage('Pull Backend Image on Remote Server') {
-            steps {
-                script {
-                    // Pull backend image from DockerHub to remote server
-                    sh """
-                    sshpass -p \$SSH_PASS ssh -o StrictHostKeyChecking=no \$SSH_USER@${REMOTE_HOST} << EOF
-                    docker pull ${BACKEND_IMAGE}
-                    EOF
-                    """
-                }
-            }
+    steps {
+        script {
+            // Pull backend image from DockerHub to remote server
+            sh """
+            sshpass -p \$SSH_PASS ssh -o StrictHostKeyChecking=no \$SSH_USER@${REMOTE_HOST} "docker pull ${BACKEND_IMAGE}"
+            """
         }
+    }
+}
 
-        stage('Pull Frontend Image on Remote Server') {
-            steps {
-                script {
-                    // Pull frontend image from DockerHub to remote server
-                    sh """
-                    sshpass -p \$SSH_PASS ssh -o StrictHostKeyChecking=no \$SSH_USER@${REMOTE_HOST} << EOF
-                    docker pull ${FRONTEND_IMAGE}
-                    EOF
-                    """
-                }
-            }
+stage('Pull Frontend Image on Remote Server') {
+    steps {
+        script {
+            // Pull frontend image from DockerHub to remote server
+            sh """
+            sshpass -p \$SSH_PASS ssh -o StrictHostKeyChecking=no \$SSH_USER@${REMOTE_HOST} "docker pull ${FRONTEND_IMAGE}"
+            """
         }
+    }
+}
+
 
         stage('Stop Existing Containers on Remote Server') {
             steps {
