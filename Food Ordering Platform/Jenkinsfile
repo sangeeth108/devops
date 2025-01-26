@@ -37,20 +37,21 @@ pipeline {
             }
         }
         stage('Deploy to Remote Server') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'server-credentials', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
-                    sh """
-                    sshpass -p $SSH_PASS ssh -o StrictHostKeyChecking=no $SSH_USER@${REMOTE_HOST} << EOF
-                    docker pull ${BACKEND_IMAGE}
-                    docker pull ${FRONTEND_IMAGE}
-                    docker stop backend || true && docker rm backend || true
-                    docker stop frontend || true && docker rm frontend || true
-                    docker run -d -p 5000:5000 --name backend ${BACKEND_IMAGE}
-                    docker run -d -p 3000:3000 --name frontend ${FRONTEND_IMAGE}
-                    EOF
-                    """
-                }
-            }
+    steps {
+        withCredentials([usernamePassword(credentialsId: 'server-credentials', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
+            sh """
+            sshpass -p '${SSH_PASS}' ssh -o StrictHostKeyChecking=no ${SSH_USER}@${REMOTE_HOST} << EOF
+            docker pull ${BACKEND_IMAGE}
+            docker pull ${FRONTEND_IMAGE}
+            docker stop backend || true && docker rm backend || true
+            docker stop frontend || true && docker rm frontend || true
+            docker run -d -p 5000:5000 --name backend ${BACKEND_IMAGE}
+            docker run -d -p 3000:3000 --name frontend ${FRONTEND_IMAGE}
+            EOF
+            """
         }
+    }
+}
+
     }
 }
