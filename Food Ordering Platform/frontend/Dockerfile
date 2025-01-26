@@ -7,9 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Update npm to the latest compatible version (10.x) and install dependencies
-RUN npm install -g npm@10 && \
-    npm install || npm install
+# Install dependencies
+RUN npm install
 
 # Copy app files
 COPY . .
