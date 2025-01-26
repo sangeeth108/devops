@@ -41,7 +41,7 @@ export default function Home() {
       <div className="-mt-20 relative z-10">
         <div className="bg-white shadow-lg rounded-lg mx-auto max-w-screen-md p-8">
           <h1 className="text-blue-800 text-3xl font-bold text-center mb-2">
-            Tuck into a takeaway today
+            Tuck into a takeaway today sexxx
           </h1>
           <p className="text-gray-600 text-center mb-6">
             Food is just a click away!
