@@ -3,10 +3,10 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials') // DockerHub credentials
+        SERVER_CREDENTIALS = credentials('server-credentials') // Remote server credentials
         BACKEND_IMAGE = "sangeeth108/express-backend"
         FRONTEND_IMAGE = "sangeeth108/nextjs-frontend"
         REMOTE_HOST = "143.244.136.237"
-        DOCKER_BUILDKIT = '0'
     }
 
     stages {
@@ -15,109 +15,37 @@ pipeline {
                 checkout scm
             }
         }
-
         stage('Login to DockerHub') {
             steps {
                 script {
-                    // Log in to DockerHub
-                    sh '''
-                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-                    '''
-                }
-            }
-        }
-
-        stage('Push Backend Image to DockerHub') {
-            steps {
-                script {
-                    // Push the backend image to DockerHub
-                    sh '''
-                        docker push ${BACKEND_IMAGE}
-                    '''
-                }
-            }
-        }
-
-        stage('Push Frontend Image to DockerHub') {
-            steps {
-                script {
-                    // Push the frontend image to DockerHub
-                    sh '''
-                        docker push ${FRONTEND_IMAGE}
-                    '''
-                }
-            }
-        }
-
-        stage('Prepare for Remote Deployment') {
-            steps {
-                script {
-                    // Prepare SSH credentials for remote deployment
-                    withCredentials([usernamePassword(credentialsId: 'server-credentials', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
-                        sh """
-                        echo "SSH credentials ready for deployment"
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Pull Backend Image on Remote Server') {
-    steps {
-        script {
-            // Pull backend image from DockerHub to remote server
-            sh """
-            sshpass -p \$SSH_PASS ssh -o StrictHostKeyChecking=no \$SSH_USER@${REMOTE_HOST} "docker pull ${BACKEND_IMAGE}"
-            """
-        }
-    }
-}
-
-stage('Pull Frontend Image on Remote Server') {
-    steps {
-        script {
-            // Pull frontend image from DockerHub to remote server
-            sh """
-            sshpass -p \$SSH_PASS ssh -o StrictHostKeyChecking=no \$SSH_USER@${REMOTE_HOST} "docker pull ${FRONTEND_IMAGE}"
-            """
-        }
-    }
-}
-
-
-        stage('Stop Existing Containers on Remote Server') {
-            steps {
-                script {
-                    // Stop and remove existing containers if any
+                    // Docker login to DockerHub
                     sh """
-                    sshpass -p \$SSH_PASS ssh -o StrictHostKeyChecking=no \$SSH_USER@${REMOTE_HOST} << EOF
+                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                    """
+                }
+            }
+        }
+        stage('Pull Backend and Frontend Images') {
+            steps {
+                script {
+                    // Pull the backend and frontend images from DockerHub
+                    sh """
+                        docker pull ${BACKEND_IMAGE}
+                        docker pull ${FRONTEND_IMAGE}
+                    """
+                }
+            }
+        }
+        stage('Deploy to Remote Server') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'server-credentials', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
+                    sh """
+                    sshpass -p $SSH_PASS ssh -o StrictHostKeyChecking=no $SSH_USER@${REMOTE_HOST} << EOF
+                    docker pull ${BACKEND_IMAGE}
+                    docker pull ${FRONTEND_IMAGE}
                     docker stop backend || true && docker rm backend || true
                     docker stop frontend || true && docker rm frontend || true
-                    EOF
-                    """
-                }
-            }
-        }
-
-        stage('Deploy Backend Container') {
-            steps {
-                script {
-                    // Run the backend container on the remote server
-                    sh """
-                    sshpass -p \$SSH_PASS ssh -o StrictHostKeyChecking=no \$SSH_USER@${REMOTE_HOST} << EOF
                     docker run -d -p 5000:5000 --name backend ${BACKEND_IMAGE}
-                    EOF
-                    """
-                }
-            }
-        }
-
-        stage('Deploy Frontend Container') {
-            steps {
-                script {
-                    // Run the frontend container on the remote server
-                    sh """
-                    sshpass -p \$SSH_PASS ssh -o StrictHostKeyChecking=no \$SSH_USER@${REMOTE_HOST} << EOF
                     docker run -d -p 3000:3000 --name frontend ${FRONTEND_IMAGE}
                     EOF
                     """
