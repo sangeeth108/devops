@@ -16,41 +16,97 @@ pipeline {
                 checkout scm
             }
         }
+
+        stage('DockerHub Login') {
+            steps {
+                script {
+                    sh '''
+                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                    '''
+                }
+            }
+        }
+
         stage('Build and Push Backend Image') {
             steps {
                 dir('Food Ordering Platform/backend') {
                     sh '''
-                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                        docker build -t ${BACKEND_IMAGE} .
                         docker push ${BACKEND_IMAGE}
                     '''
                 }
             }
         }
+
         stage('Build and Push Frontend Image') {
             steps {
                 dir('Food Ordering Platform/frontend') {
                     sh '''
-                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                        docker build -t ${FRONTEND_IMAGE} .
                         docker push ${FRONTEND_IMAGE}
                     '''
                 }
             }
         }
+
+        stage('Login to Remote Server') {
+            steps {
+                script {
+                    // Test SSH connection to the remote server
+                    sh """
+                    sshpass -p '#San1224geeth' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} 'echo Connected'
+                    """
+                }
+            }
+        }
+
         stage('Deploy to Remote Server') {
-    steps {
-        sh """
-        sshpass -p '#San1224geeth' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
-        'docker pull ${BACKEND_IMAGE} && \
-        docker pull ${FRONTEND_IMAGE} && \
-        docker rm -f backend || true && \
-        docker rm -f frontend || true && \
-        docker run -d -p 5000:5000 --name backend ${BACKEND_IMAGE} && \
-        docker run -d -p 3000:3000 --name frontend ${FRONTEND_IMAGE}'
-        """
-    }
-}
+            steps {
+                script {
+                    // Pull images on the remote server
+                    sh """
+                    sshpass -p '#San1224geeth' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
+                    'docker pull ${BACKEND_IMAGE} && \
+                    docker pull ${FRONTEND_IMAGE}'
+                    """
+                }
+            }
+        }
 
+        stage('Remove Existing Containers') {
+            steps {
+                script {
+                    // Remove existing containers if they exist
+                    sh """
+                    sshpass -p '#San1224geeth' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
+                    'docker rm -f backend || true && docker rm -f frontend || true'
+                    """
+                }
+            }
+        }
 
+        stage('Deploy Backend') {
+            steps {
+                script {
+                    // Deploy the backend
+                    sh """
+                    sshpass -p '#San1224geeth' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
+                    'docker run -d -p 5000:5000 --name backend ${BACKEND_IMAGE}'
+                    """
+                }
+            }
+        }
 
+        stage('Deploy Frontend') {
+            steps {
+                script {
+                    // Deploy the frontend
+                    sh """
+                    sshpass -p '#San1224geeth' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
+                    'docker run -d -p 3000:3000 --name frontend ${FRONTEND_IMAGE}'
+                    """
+                }
+            }
+        }
     }
 }
