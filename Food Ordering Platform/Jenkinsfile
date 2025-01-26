@@ -7,7 +7,6 @@ pipeline {
         BACKEND_IMAGE = "sangeeth108/express-backend"
         FRONTEND_IMAGE = "sangeeth108/nextjs-frontend"
         REMOTE_HOST = "143.244.136.237"
-        DOCKER_BUILDKIT = '0'
     }
 
     stages {
@@ -16,41 +15,89 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Build and Push Backend Image') {
+
+        stage('Docker Login') {
             steps {
-                dir('Food Ordering Platform/backend') {
-                    sh '''
-                        docker build -t ${BACKEND_IMAGE} .
-                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-                        docker push ${BACKEND_IMAGE}
-                    '''
-                }
-            }
-        }
-        stage('Build and Push Frontend Image') {
-            steps {
-                dir('Food Ordering Platform/frontend') {
-                    sh '''
-                        docker build -t ${FRONTEND_IMAGE} .
-                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-                        docker push ${FRONTEND_IMAGE}
-                    '''
-                }
-            }
-        }
-        stage('Deploy to Remote Server') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'server-credentials', usernameVariable: 'SSH_USER', passwordVariable: 'SSH_PASS')]) {
+                script {
+                    // Log in to DockerHub
                     sh """
-                    sshpass -p $SSH_PASS ssh -o StrictHostKeyChecking=no $SSH_USER@${REMOTE_HOST} << EOF
-                    docker pull ${BACKEND_IMAGE}
-                    docker pull ${FRONTEND_IMAGE}
-                    docker stop backend || true && docker rm backend || true
-                    docker stop frontend || true && docker rm frontend || true
-                    docker run -d -p 5000:5000 --name backend ${BACKEND_IMAGE}
-                    docker run -d -p 3000:3000 --name frontend ${FRONTEND_IMAGE}
-                    EOF
+                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
                     """
+                }
+            }
+        }
+
+        stage('Pull Backend Image') {
+            steps {
+                script {
+                    // Pull the backend image from DockerHub
+                    sh """
+                        docker pull ${BACKEND_IMAGE}
+                    """
+                }
+            }
+        }
+
+        stage('Pull Frontend Image') {
+            steps {
+                script {
+                    // Pull the frontend image from DockerHub
+                    sh """
+                        docker pull ${FRONTEND_IMAGE}
+                    """
+                }
+            }
+        }
+
+        stage('Stop and Remove Existing Backend Container') {
+            steps {
+                script {
+                    // Stop and remove the existing backend container (if running)
+                    sh """
+                        docker stop backend || true && docker rm backend || true
+                    """
+                }
+            }
+        }
+
+        stage('Stop and Remove Existing Frontend Container') {
+            steps {
+                script {
+                    // Stop and remove the existing frontend container (if running)
+                    sh """
+                        docker stop frontend || true && docker rm frontend || true
+                    """
+                }
+            }
+        }
+
+        stage('Deploy Backend Container') {
+            steps {
+                script {
+                    // Run the backend container on the remote server
+                    sh """
+                        docker run -d -p 5000:5000 --name backend ${BACKEND_IMAGE}
+                    """
+                }
+            }
+        }
+
+        stage('Deploy Frontend Container') {
+            steps {
+                script {
+                    // Run the frontend container on the remote server
+                    sh """
+                        docker run -d -p 3000:3000 --name frontend ${FRONTEND_IMAGE}
+                    """
+                }
+            }
+        }
+
+        stage('Final Cleanup') {
+            steps {
+                script {
+                    // Final cleanup if needed
+                    echo "Deployment complete."
                 }
             }
         }
