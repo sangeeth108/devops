@@ -28,6 +28,9 @@ pipeline {
         }
 
         stage('Build, Push Backend Image') {
+            when {
+                changeset "Food Ordering Platform/backend/**"
+            }
             steps {
                 dir('Food Ordering Platform/backend') {
                     sh '''
@@ -39,6 +42,9 @@ pipeline {
         }
 
         stage('Build and Push Frontend Image') {
+            when {
+                changeset "Food Ordering Platform/frontend/**"
+            }
             steps {
                 dir('Food Ordering Platform/frontend') {
                     sh '''
@@ -92,6 +98,9 @@ pipeline {
         }
 
         stage('Deploy Backend') {
+            when {
+                changeset "Food Ordering Platform/backend/**"
+            }
             steps {
                 script {
                     // Deploy the backend
@@ -104,6 +113,9 @@ pipeline {
         }
 
         stage('Deploy Frontend') {
+            when {
+                changeset "Food Ordering Platform/frontend/**"
+            }
             steps {
                 script {
                     // Deploy the frontend
