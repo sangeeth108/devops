@@ -4,7 +4,7 @@ const MenuItem = require('../models/MenuItem');
 const router = express.Router();
 
 
-// CREATE a new MenuIte
+// CREATE a new
 router.post('/create/menu-items', async (req, res) => {
     try {
       const { owner, name, description, price, image, quantity } = req.body;
