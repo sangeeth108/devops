@@ -98,9 +98,6 @@ pipeline {
         }
 
         stage('Deploy Backend') {
-            when {
-                changeset "Food Ordering Platform/backend/**"
-            }
             steps {
                 script {
                     // Deploy the backend
@@ -113,9 +110,6 @@ pipeline {
         }
 
         stage('Deploy Frontend') {
-            when {
-                changeset "Food Ordering Platform/frontend/**"
-            }
             steps {
                 script {
                     // Deploy the frontend
