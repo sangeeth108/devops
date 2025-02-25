@@ -49,12 +49,18 @@ pipeline {
             }
         }
 
+        stage('DockerHub Logout') {
+            steps {
+                sh 'docker logout'
+            }
+        }
+
         stage('Login to Remote Server') {
             steps {
                 script {
                     // Test SSH connection to the remote server
                     sh """
-                    sshpass -p '#San1224geeth' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} 'echo Connected'
+                    sshpass -p '${SERVER_CREDENTIALS_PSW}' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} 'echo Connected'
                     """
                 }
             }
@@ -65,7 +71,7 @@ pipeline {
                 script {
                     // Pull images on the remote server
                     sh """
-                    sshpass -p '#San1224geeth' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
+                    sshpass -p '${SERVER_CREDENTIALS_PSW}' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
                     'docker pull ${BACKEND_IMAGE} && \
                     docker pull ${FRONTEND_IMAGE}'
                     """
@@ -78,7 +84,7 @@ pipeline {
                 script {
                     // Remove existing containers if they exist
                     sh """
-                    sshpass -p '#San1224geeth' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
+                    sshpass -p '${SERVER_CREDENTIALS_PSW}' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
                     'docker rm -f backend || true && docker rm -f frontend || true'
                     """
                 }
@@ -90,7 +96,7 @@ pipeline {
                 script {
                     // Deploy the backend
                     sh """
-                    sshpass -p '#San1224geeth' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
+                    sshpass -p '${SERVER_CREDENTIALS_PSW}' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
                     'docker run -d -p 5000:5000 --name backend ${BACKEND_IMAGE}'
                     """
                 }
@@ -102,7 +108,7 @@ pipeline {
                 script {
                     // Deploy the frontend
                     sh """
-                    sshpass -p '#San1224geeth' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
+                    sshpass -p '${SERVER_CREDENTIALS_PSW}' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
                     'docker run -d -p 3000:3000 --name frontend ${FRONTEND_IMAGE}'
                     """
                 }
