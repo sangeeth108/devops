@@ -110,4 +110,13 @@ router.post('/cart/clear', async (req, res) => {
   }
 });
 
+router.get('/cart', async (req, res) => {
+  try {
+    const carts = await Cart.find().populate('items.menuItem');
+    res.status(200).json(carts);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching carts', details: error.message });
+  }
+});
+
 module.exports = router;
