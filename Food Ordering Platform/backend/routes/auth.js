@@ -111,8 +111,6 @@ router.get('/api/auth/user', auth, async (req, res) => {
 });
 
 
-
-// @route   POST /api/auth/logout
 // @desc    Logout user (just a notification)
 router.post('/api/auth/logout', auth, (req, res) => {
   // You can perform additional tasks here, like logging out the user from the server-side perspective
