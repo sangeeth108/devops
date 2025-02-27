@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 
+
 const Page = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [error, setError] = useState(null);
