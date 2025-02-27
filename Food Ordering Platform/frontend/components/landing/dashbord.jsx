@@ -1,24 +1,38 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useState } from "react"; // for managing login state
-import { useRouter } from "next/navigation"; // for routing
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import burgerImage from "../../public/assets/images/hero.png";
 import AppStore from "../../public/assets/images/AppStore.png";
 import GooglePlay from "../../public/assets/images/GooglePlay.png";
 
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [role, setRole] = useState(""); // state for user role
+  const [role, setRole] = useState("");
   const router = useRouter();
 
   useEffect(() => {
-    const loggedInStatus = localStorage.getItem("loggedIn") === "true";
-    setIsLoggedIn(loggedInStatus);
-    if (loggedInStatus) {
-      const userRole = localStorage.getItem("role");
-      setRole(userRole);
-    }
-  }, []); // Runs only once to check login status
+    const updateAuthState = () => {
+      const loggedInStatus = localStorage.getItem("loggedIn") === "true";
+      setIsLoggedIn(loggedInStatus);
+      if (loggedInStatus) {
+        const userRole = localStorage.getItem("role");
+        setRole(userRole);
+      } else {
+        setRole("");
+      }
+    };
+
+    // Check initial state
+    updateAuthState();
+
+    // Listen for storage changes (logout update)
+    window.addEventListener("storage", updateAuthState);
+
+    return () => {
+      window.removeEventListener("storage", updateAuthState);
+    };
+  }, []);
 
   return (
     <div className="bg-gray-100">
@@ -51,14 +65,14 @@ export default function Home() {
               role === "restaurantowner" ? (
                 <button
                   className="px-6 py-3 bg-blue-800 text-white rounded-lg hover:bg-green-700 focus:outline-none"
-                  onClick={() => router.push("/OwnerDashboard")} // Redirect to Owner Dashboard
+                  onClick={() => router.push("/OwnerDashboard")}
                 >
                   Go to Dashboard
                 </button>
               ) : (
                 <button
                   className="px-6 py-3 bg-blue-800 text-white rounded-lg hover:bg-green-700 focus:outline-none"
-                  onClick={() => router.push("/MenuItems")} // Redirect to Menu Items
+                  onClick={() => router.push("/MenuItems")}
                 >
                   Find Foods
                 </button>
@@ -66,7 +80,7 @@ export default function Home() {
             ) : (
               <button
                 className="px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-blue-700 focus:outline-none"
-                onClick={() => router.push("/Login")} // Redirects to Login page
+                onClick={() => router.push("/Login")}
               >
                 Login to Find Foods
               </button>
@@ -82,23 +96,13 @@ export default function Home() {
             Order takeaway even faster!
           </h2>
           <p className="text-gray-600">
-            Download the MernEats App for faster ordering and personalised
-            recommendations
+            Download the MernEats App for faster ordering and personalized
+            recommendations.
           </p>
         </div>
         <div className="flex justify-center space-x-4">
-          <Image
-            src={AppStore}
-            alt="App Preview"
-            width={200}
-            height={400}
-          />
-          <Image
-            src={GooglePlay}
-            alt="App Preview"
-            width={200}
-            height={400}
-          />
+          <Image src={AppStore} alt="App Preview" width={200} height={400} />
+          <Image src={GooglePlay} alt="App Preview" width={200} height={400} />
         </div>
       </div>
     </div>

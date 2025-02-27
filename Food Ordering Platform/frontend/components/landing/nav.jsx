@@ -9,17 +9,33 @@ const Navbar = () => {
   const [userName, setUserName] = useState("");
 
   useEffect(() => {
-    const loggedInStatus = localStorage.getItem("loggedIn");
-    const name = localStorage.getItem("name");
-    if (loggedInStatus === "true" && name) {
-      setIsLoggedIn(true);
-      setUserName(name);
-    }
+    const updateAuthState = () => {
+      const loggedInStatus = localStorage.getItem("loggedIn");
+      const name = localStorage.getItem("name");
+      if (loggedInStatus === "true" && name) {
+        setIsLoggedIn(true);
+        setUserName(name);
+      } else {
+        setIsLoggedIn(false);
+        setUserName("");
+      }
+    };
+
+    // Check initial state
+    updateAuthState();
+
+    // Listen for storage changes (from other components)
+    window.addEventListener("storage", updateAuthState);
+
+    return () => {
+      window.removeEventListener("storage", updateAuthState);
+    };
   }, []);
 
   const handleLogout = () => {
     localStorage.clear();
     setIsLoggedIn(false);
+    window.dispatchEvent(new Event("storage")); // Trigger update in other components
     router.push("/");
   };
 
