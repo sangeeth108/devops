@@ -6,7 +6,7 @@ pipeline {
         SERVER_CREDENTIALS = credentials('server-credentials') // Remote server credentials
         BACKEND_IMAGE = "sangeeth108/express-backend"
         FRONTEND_IMAGE = "sangeeth108/nextjs-frontend"
-        REMOTE_HOST = "139.59.78.49"
+        REMOTE_HOST = "142.93.209.126"
         DOCKER_BUILDKIT = '0'
     }
 
