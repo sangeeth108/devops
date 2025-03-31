@@ -6,13 +6,6 @@ pipeline {
         KUBE_CONFIG = credentials('kubeconfig')
         HELM_CHART = 'my-app-chart'
     }
-    
-    stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: 'your-git-repo-url'
-            }
-        }
         
         stage('Build & Test') {
             steps {
