@@ -33,14 +33,17 @@ const LoginPage = () => {
     }
 
     try {
-      const response = await fetch("http://139.59.78.49:5000/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const response = await fetch(
+        "http://142.93.209.126:5000/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        }
+      );
 
       const data = await response.json();
 
@@ -50,7 +53,6 @@ const LoginPage = () => {
         localStorage.setItem("name", data.user.firstName);
         localStorage.setItem("userid", data.user._id);
         localStorage.setItem("loggedIn", "true");
-
 
         if (data.user.role === "restaurantowner") {
           localStorage.setItem("RestaurantOwnerID", data.user._id);

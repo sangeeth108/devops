@@ -33,17 +33,20 @@ const OwnerDashboard = () => {
       description: description,
       price: parseFloat(price),
       image: image,
-      quantity: parseInt(quantity, 10)
+      quantity: parseInt(quantity, 10),
     };
 
     try {
-      const response = await fetch("http://139.59.78.49:5000/create/menu-items", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(itemData),
-      });
+      const response = await fetch(
+        "http://142.93.209.126:5000/create/menu-items",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(itemData),
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to add menu item");
@@ -71,12 +74,11 @@ const OwnerDashboard = () => {
         <h2 className="text-xl text-gray-600 text-center mb-8">
           Welcome, {userName}
         </h2>
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6"
-        >
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Item Name</label>
+            <label className="block text-gray-700 font-medium mb-2">
+              Item Name
+            </label>
             <input
               type="text"
               value={itemName}
@@ -86,7 +88,9 @@ const OwnerDashboard = () => {
             />
           </div>
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Description</label>
+            <label className="block text-gray-700 font-medium mb-2">
+              Description
+            </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -96,7 +100,9 @@ const OwnerDashboard = () => {
             ></textarea>
           </div>
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Price</label>
+            <label className="block text-gray-700 font-medium mb-2">
+              Price
+            </label>
             <input
               type="number"
               value={price}
@@ -106,7 +112,9 @@ const OwnerDashboard = () => {
             />
           </div>
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Quantity</label>
+            <label className="block text-gray-700 font-medium mb-2">
+              Quantity
+            </label>
             <input
               type="number"
               value={quantity}
@@ -117,7 +125,9 @@ const OwnerDashboard = () => {
             />
           </div>
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Image URL</label>
+            <label className="block text-gray-700 font-medium mb-2">
+              Image URL
+            </label>
             <input
               type="text"
               value={image}
@@ -135,9 +145,6 @@ const OwnerDashboard = () => {
       </div>
     </div>
   );
-  
-  
-  
 };
 
 export default OwnerDashboard;

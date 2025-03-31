@@ -6,7 +6,6 @@ import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import { BiChevronDown } from "react-icons/bi";
 import { useRouter } from "next/navigation";
 
-
 const SignupPage = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -42,13 +41,16 @@ const SignupPage = () => {
 
     // Make a POST request to the signup API
     try {
-      const response = await fetch("http://139.59.78.49:5000/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(signupData),
-      });
+      const response = await fetch(
+        "http://142.93.209.126:5000/api/auth/signup",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(signupData),
+        }
+      );
 
       const data = await response.json();
       if (response.ok) {
