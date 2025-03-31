@@ -8,6 +8,28 @@ pipeline {
     }
 
     stages {
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Debug Folder Structure') { // Debugging step to verify folder structure
+            steps {
+                script {
+                    sh 'ls -la'
+                    sh 'ls -la "Food Ordering Platform"' // Check inside the main project folder
+                }
+            }
+        }
+        stage('DockerHub Login') {
+            steps {
+                script {
+                    sh '''
+                        echo $DOCKER_REGISTRY_PSW | docker login -u $DOCKER_REGISTRY_USR --password-stdin
+                    '''
+                }
+            }
+        }
         stage('Build & Test') {
             steps {
                 script {
