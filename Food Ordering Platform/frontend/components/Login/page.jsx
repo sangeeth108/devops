@@ -21,7 +21,6 @@ const LoginPage = () => {
     }
   }, []);
   
-
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   const handleSubmit = async (e) => {
