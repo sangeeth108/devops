@@ -6,7 +6,8 @@ pipeline {
         KUBE_CONFIG = credentials('kubeconfig')
         HELM_CHART = 'my-app-chart'
     }
-        
+
+    stages {
         stage('Build & Test') {
             steps {
                 script {
