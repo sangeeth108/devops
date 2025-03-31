@@ -1,0 +1,45 @@
+express:
+  image:
+    repository: your-registry/express-app
+    tag: latest
+  replicaCount: 2
+  service:
+    port: 3000
+
+nextjs:
+  image:
+    repository: your-registry/nextjs-app
+    tag: latest
+  replicaCount: 2
+  service:
+    port: 3000
+
+# Global service configuration
+service:
+  type: ClusterIP
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+resources: {}
+
+# Pod security configurations
+securityContext: {}
+
+# Liveness and readiness probes
+livenessProbe:
+  httpGet:
+    path: /
+    port: 3000
+readinessProbe:
+  httpGet:
+    path: /
+    port: 3000
+
+# Node affinity, tolerations, and selectors
+nodeSelector: {}
+tolerations: []
+affinity: {}

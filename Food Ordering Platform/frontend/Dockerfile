@@ -1,5 +1,5 @@
 # base image
-FROM node:22-alpine
+FROM node:18-alpine
 
 #worknig directory
 WORKDIR /application-frontend
