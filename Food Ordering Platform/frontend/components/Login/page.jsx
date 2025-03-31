@@ -12,6 +12,7 @@ const LoginPage = () => {
   const [rememberMe, setRememberMe] = useState(false);
 
   const router = useRouter();
+  
   useEffect(() => {
     const savedEmail = localStorage.getItem("email");
     if (savedEmail) {
