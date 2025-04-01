@@ -11,6 +11,7 @@ const OwnerDashboard = () => {
   const [price, setPrice] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [image, setImage] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -26,6 +27,7 @@ const OwnerDashboard = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     const itemData = {
       owner: userID,
@@ -62,86 +64,122 @@ const OwnerDashboard = () => {
       setImage("");
     } catch (error) {
       alert(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-10 px-4">
-      <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-8">
-        <h1 className="text-3xl font-bold text-gray-800 text-center mb-4">
-          Owner Dashboard
-        </h1>
-        <h2 className="text-xl text-gray-600 text-center mb-8">
-          Welcome, {userName}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Item Name
-            </label>
-            <input
-              type="text"
-              value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-              required
-              className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-300"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              required
-              className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-300"
-              rows="4"
-            ></textarea>
-          </div>
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Price
-            </label>
-            <input
-              type="number"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              required
-              className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-300"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Quantity
-            </label>
-            <input
-              type="number"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              min="1"
-              required
-              className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-300"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Image URL
-            </label>
-            <input
-              type="text"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-300"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 focus:ring focus:ring-blue-300"
-          >
-            Add Item
-          </button>
-        </form>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 py-12 px-4">
+      <div className="max-w-3xl mx-auto bg-white shadow-xl rounded-2xl overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6">
+          <h1 className="text-3xl font-bold text-white text-center">
+            Owner Dashboard
+          </h1>
+          <h2 className="text-xl text-blue-100 text-center mt-2">
+            Welcome, {userName}
+          </h2>
+        </div>
+        
+        <div className="p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="block text-gray-700 font-medium">
+                  Item Name
+                </label>
+                <input
+                  type="text"
+                  value={itemName}
+                  onChange={(e) => setItemName(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  placeholder="Enter item name"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="block text-gray-700 font-medium">
+                  Price
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-3 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    required
+                    className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    placeholder="0.00"
+                    step="0.01"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="block text-gray-700 font-medium">
+                Description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                rows="4"
+                placeholder="Describe your menu item"
+              ></textarea>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="block text-gray-700 font-medium">
+                  Quantity
+                </label>
+                <input
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  min="1"
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  placeholder="Available quantity"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="block text-gray-700 font-medium">
+                  Image URL
+                </label>
+                <input
+                  type="text"
+                  value={image}
+                  onChange={(e) => setImage(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+            </div>
+            
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold py-3 px-6 rounded-lg hover:opacity-90 focus:ring-4 focus:ring-blue-300 transition-all shadow-md"
+            >
+              {loading ? (
+                <span className="inline-flex items-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </span>
+              ) : (
+                "Add Item to Menu"
+              )}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
