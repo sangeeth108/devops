@@ -93,7 +93,9 @@ const OwnerDashboard = () => {
                   value={itemName}
                   onChange={(e) => setItemName(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                    itemName ? 'text-gray-900' : 'text-gray-500'
+                  }`}
                   placeholder="Enter item name"
                 />
               </div>
@@ -109,7 +111,9 @@ const OwnerDashboard = () => {
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
                     required
-                    className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    className={`w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                      price > 0 ? 'text-gray-900' : 'text-gray-500'
+                    }`}
                     placeholder="0.00"
                     step="0.01"
                   />
@@ -125,7 +129,9 @@ const OwnerDashboard = () => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                  description ? 'text-gray-900' : 'text-gray-500'
+                }`}
                 rows="4"
                 placeholder="Describe your menu item"
               ></textarea>
@@ -142,7 +148,9 @@ const OwnerDashboard = () => {
                   onChange={(e) => setQuantity(e.target.value)}
                   min="1"
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                    quantity > 1 ? 'text-gray-900' : 'text-gray-500'
+                  }`}
                   placeholder="Available quantity"
                 />
               </div>
@@ -155,7 +163,9 @@ const OwnerDashboard = () => {
                   type="text"
                   value={image}
                   onChange={(e) => setImage(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                    image ? 'text-gray-900' : 'text-gray-500'
+                  }`}
                   placeholder="https://example.com/image.jpg"
                 />
               </div>
