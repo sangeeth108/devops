@@ -1,22 +1,54 @@
 pipeline {
     agent any
-
+    
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials') // DockerHub credentials
-        SERVER_CREDENTIALS = credentials('server-credentials') // Remote server credentials
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        TERRAFORM_DIR = "/opt/jenkins-shared/terraform"
+        ANSIBLE_DIR = "/opt/jenkins-shared/ansible" 
         BACKEND_IMAGE = "sangeeth108/express-backend"
         FRONTEND_IMAGE = "sangeeth108/nextjs-frontend"
-        REMOTE_HOST = "142.93.209.126"
+        SERVER_IP = "localhost"
         DOCKER_BUILDKIT = '0'
     }
-
+    
     stages {
         stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
-
+        
+        stage('Infrastructure Setup') {
+            stages {
+                stage('Terraform Init') {
+                    steps {
+                        dir("${TERRAFORM_DIR}") {
+                            sh 'terraform init'
+                        }
+                    }
+                }
+                
+                stage('Terraform Apply') {
+                    steps {
+                        dir("${TERRAFORM_DIR}") {
+                            sh 'terraform apply -auto-approve'
+                            script {
+                                sh 'echo "Using local Docker setup"'
+                            }
+                        }
+                    }
+                }
+                
+                stage('Configure Docker with Ansible') {
+                    steps {
+                        dir("${ANSIBLE_DIR}") {
+                            sh 'ansible-playbook -i inventory.ini setup_docker.yml'
+                        }
+                    }
+                }
+            }
+        }
+        
         stage('DockerHub Login') {
             steps {
                 script {
@@ -26,7 +58,7 @@ pipeline {
                 }
             }
         }
-
+        
         stage('Build, Push Backend Image') {
             when {
                 changeset "Food Ordering Platform/backend/**"
@@ -34,13 +66,13 @@ pipeline {
             steps {
                 dir('Food Ordering Platform/backend') {
                     sh '''
-                        docker build -t ${BACKEND_IMAGE} .
-                        docker push ${BACKEND_IMAGE}
+                        docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} .
+                        docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}
                     '''
                 }
             }
         }
-
+        
         stage('Build and Push Frontend Image') {
             when {
                 changeset "Food Ordering Platform/frontend/**"
@@ -48,77 +80,55 @@ pipeline {
             steps {
                 dir('Food Ordering Platform/frontend') {
                     sh '''
-                        docker build -t ${FRONTEND_IMAGE} .
-                        docker push ${FRONTEND_IMAGE}
+                        docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} .
+                        docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}
                     '''
                 }
             }
         }
-
+        
         stage('DockerHub Logout') {
             steps {
                 sh 'docker logout'
             }
         }
-
-        stage('Login to Remote Server') {
+        
+        stage('Deploy to Local Docker') {
             steps {
                 script {
-                    // Test SSH connection to the remote server
-                    sh """
-                    sshpass -p '${SERVER_CREDENTIALS_PSW}' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} 'echo Connected'
-                    """
+                    sh '''
+                        # Pull the latest images
+                        docker pull ${BACKEND_IMAGE}:${BUILD_NUMBER}
+                        docker pull ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                        
+                        # Remove existing containers if they exist
+                        docker rm -f backend || true
+                        docker rm -f frontend || true
+                        
+                        # Run new containers
+                        docker run -d -p 5000:5000 --name backend --network food-app-network ${BACKEND_IMAGE}:${BUILD_NUMBER}
+                        docker run -d -p 3000:3000 --name frontend --network food-app-network ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                        
+                        # Verify running containers
+                        docker ps
+                    '''
                 }
             }
         }
-
-        stage('Deploy to Remote Server') {
-            steps {
-                script {
-                    // Pull images on the remote server
-                    sh """
-                    sshpass -p '${SERVER_CREDENTIALS_PSW}' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
-                    'docker pull ${BACKEND_IMAGE} && \
-                    docker pull ${FRONTEND_IMAGE}'
-                    """
-                }
-            }
+    }
+    
+    post {
+        always {
+            sh 'docker logout'
         }
-
-        stage('Remove Existing Containers') {
-            steps {
-                script {
-                    // Remove existing containers if they exist
-                    sh """
-                    sshpass -p '${SERVER_CREDENTIALS_PSW}' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
-                    'docker rm -f backend || true && docker rm -f frontend || true'
-                    """
-                }
-            }
+        success {
+            echo 'Full CI/CD pipeline completed successfully!'
+            echo "Application deployed locally"
+            echo "Backend API available at: http://localhost:5000"
+            echo "Frontend available at: http://localhost:3000"
         }
-
-        stage('Deploy Backend') {
-            steps {
-                script {
-                    // Deploy the backend
-                    sh """
-                    sshpass -p '${SERVER_CREDENTIALS_PSW}' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
-                    'docker run -d -p 5000:5000 --name backend ${BACKEND_IMAGE}'
-                    """
-                }
-            }
-        }
-
-        stage('Deploy Frontend') {
-            steps {
-                script {
-                    // Deploy the frontend
-                    sh """
-                    sshpass -p '${SERVER_CREDENTIALS_PSW}' ssh -o StrictHostKeyChecking=no root@${REMOTE_HOST} \
-                    'docker run -d -p 3000:3000 --name frontend ${FRONTEND_IMAGE}'
-                    """
-                }
-            }
+        failure {
+            echo 'Pipeline failed. Check logs for details.'
         }
     }
 }
