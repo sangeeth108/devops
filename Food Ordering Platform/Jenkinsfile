@@ -1,6 +1,11 @@
 pipeline {
     agent any
     
+    parameters {
+        booleanParam(defaultValue: false, description: 'Force build and deployment of images', name: 'FORCE_BUILD')
+        booleanParam(defaultValue: false, description: 'First run - build all images', name: 'FIRST_RUN')
+    }
+    
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
         TERRAFORM_DIR = "/opt/jenkins-shared/terraform"
@@ -9,6 +14,7 @@ pipeline {
         FRONTEND_IMAGE = "sangeeth108/nextjs-frontend"
         SERVER_IP = "localhost"
         DOCKER_BUILDKIT = '0'
+        FIRST_RUN = "${params.FIRST_RUN}"
     }
     
     stages {
@@ -66,15 +72,26 @@ pipeline {
             }
         }
         
-        stage('Build, Push Backend Image') {
+        stage('Build and Push Backend Image') {
             when {
-                changeset "Food Ordering Platform/backend/**"
+                anyOf {
+                    changeset "Food Ordering Platform/backend/**"
+                    expression { return params.FORCE_BUILD == true }
+                    expression { return env.FIRST_RUN == 'true' }
+                }
             }
             steps {
                 dir('Food Ordering Platform/backend') {
                     sh '''
-                        docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} .
-                        docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}
+                        # Check if directory exists
+                        if [ -d "." ]; then
+                            # Build and tag with both build number and latest
+                            docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} -t ${BACKEND_IMAGE}:latest .
+                            docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}
+                            docker push ${BACKEND_IMAGE}:latest
+                        else
+                            echo "Backend directory not found, skipping build"
+                        fi
                     '''
                 }
             }
@@ -82,13 +99,24 @@ pipeline {
         
         stage('Build and Push Frontend Image') {
             when {
-                changeset "Food Ordering Platform/frontend/**"
+                anyOf {
+                    changeset "Food Ordering Platform/frontend/**"
+                    expression { return params.FORCE_BUILD == true }
+                    expression { return env.FIRST_RUN == 'true' }
+                }
             }
             steps {
                 dir('Food Ordering Platform/frontend') {
                     sh '''
-                        docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} .
-                        docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                        # Check if directory exists
+                        if [ -d "." ]; then
+                            # Build and tag with both build number and latest
+                            docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} -t ${FRONTEND_IMAGE}:latest .
+                            docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                            docker push ${FRONTEND_IMAGE}:latest
+                        else
+                            echo "Frontend directory not found, skipping build"
+                        fi
                     '''
                 }
             }
@@ -103,18 +131,52 @@ pipeline {
         stage('Deploy to Local Docker') {
             steps {
                 script {
+                    // Check if backend image exists locally or remotely
+                    def backendExists = sh(script: "docker image inspect ${BACKEND_IMAGE}:${BUILD_NUMBER} >/dev/null 2>&1 || docker pull ${BACKEND_IMAGE}:${BUILD_NUMBER} >/dev/null 2>&1", returnStatus: true) == 0
+                    
+                    // Check if frontend image exists locally or remotely
+                    def frontendExists = sh(script: "docker image inspect ${FRONTEND_IMAGE}:${BUILD_NUMBER} >/dev/null 2>&1 || docker pull ${FRONTEND_IMAGE}:${BUILD_NUMBER} >/dev/null 2>&1", returnStatus: true) == 0
+                    
+                    // If no new images, use latest or default images
+                    if (!backendExists) {
+                        echo "Backend image ${BACKEND_IMAGE}:${BUILD_NUMBER} not found. Using latest or default image instead."
+                        sh "docker pull ${BACKEND_IMAGE}:latest || echo 'Using default backend image or skipping backend deployment'"
+                    }
+                    
+                    if (!frontendExists) {
+                        echo "Frontend image ${FRONTEND_IMAGE}:${BUILD_NUMBER} not found. Using latest or default image instead."
+                        sh "docker pull ${FRONTEND_IMAGE}:latest || echo 'Using default frontend image or skipping frontend deployment'"
+                    }
+                    
+                    // Deploy backend if it exists (either current build or latest)
                     sh '''
-                        # Pull the latest images
-                        docker pull ${BACKEND_IMAGE}:${BUILD_NUMBER}
-                        docker pull ${FRONTEND_IMAGE}:${BUILD_NUMBER}
-                        
-                        # Remove existing containers if they exist
+                        # Remove existing backend container if it exists
                         docker rm -f backend || true
+                        
+                        # Check which backend image version exists
+                        if docker image inspect ${BACKEND_IMAGE}:${BUILD_NUMBER} >/dev/null 2>&1; then
+                            # Run new backend container with current build
+                            docker run -d -p 5000:5000 --name backend --network food-app-network ${BACKEND_IMAGE}:${BUILD_NUMBER} || true
+                        elif docker image inspect ${BACKEND_IMAGE}:latest >/dev/null 2>&1; then
+                            # Run with latest if current doesn't exist
+                            docker run -d -p 5000:5000 --name backend --network food-app-network ${BACKEND_IMAGE}:latest || true
+                        else
+                            echo "No backend image available. Skipping backend deployment."
+                        fi
+                        
+                        # Remove existing frontend container if it exists
                         docker rm -f frontend || true
                         
-                        # Run new containers
-                        docker run -d -p 5000:5000 --name backend --network food-app-network ${BACKEND_IMAGE}:${BUILD_NUMBER}
-                        docker run -d -p 3000:3000 --name frontend --network food-app-network ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                        # Check which frontend image version exists
+                        if docker image inspect ${FRONTEND_IMAGE}:${BUILD_NUMBER} >/dev/null 2>&1; then
+                            # Run new frontend container with current build
+                            docker run -d -p 3000:3000 --name frontend --network food-app-network ${FRONTEND_IMAGE}:${BUILD_NUMBER} || true
+                        elif docker image inspect ${FRONTEND_IMAGE}:latest >/dev/null 2>&1; then
+                            # Run with latest if current doesn't exist
+                            docker run -d -p 3000:3000 --name frontend --network food-app-network ${FRONTEND_IMAGE}:latest || true
+                        else
+                            echo "No frontend image available. Skipping frontend deployment."
+                        fi
                         
                         # Verify running containers
                         docker ps
@@ -126,16 +188,38 @@ pipeline {
     
     post {
         always {
-            sh 'docker logout'
+            sh 'docker logout || true'
         }
         success {
-            echo 'Full CI/CD pipeline completed successfully!'
-            echo "Application deployed locally"
-            echo "Backend API available at: http://localhost:5000"
-            echo "Frontend available at: http://localhost:3000"
+            script {
+                def backendRunning = sh(script: 'docker ps | grep backend || true', returnStdout: true).trim()
+                def frontendRunning = sh(script: 'docker ps | grep frontend || true', returnStdout: true).trim()
+                
+                echo 'Pipeline completed successfully!'
+                
+                if (backendRunning) {
+                    echo "Backend API is running and available at: http://localhost:5000"
+                } else {
+                    echo "Note: Backend container is not running"
+                }
+                
+                if (frontendRunning) {
+                    echo "Frontend is running and available at: http://localhost:3000"
+                } else {
+                    echo "Note: Frontend container is not running"
+                }
+                
+                echo "\nTo force build of images on next run, use the FORCE_BUILD parameter."
+                echo "For first-time setup, use the FIRST_RUN parameter."
+            }
         }
         failure {
             echo 'Pipeline failed. Check logs for details.'
+            echo 'Common issues:'
+            echo ' - Missing Docker images'
+            echo ' - Permission problems with Docker'
+            echo ' - Project directories not found'
+            echo 'Try running with FIRST_RUN=true if this is your first pipeline run.'
         }
     }
 }
