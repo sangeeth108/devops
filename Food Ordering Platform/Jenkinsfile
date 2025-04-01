@@ -42,7 +42,14 @@ pipeline {
                 stage('Configure Docker with Ansible') {
                     steps {
                         dir("${ANSIBLE_DIR}") {
-                            sh 'ansible-playbook -i inventory.ini setup_docker.yml'
+                            // Using a different approach to avoid sudo issues
+                            sh '''
+                                # Ensure Docker is running
+                                systemctl status docker || sudo systemctl start docker
+                                
+                                # Create network if it doesn't exist
+                                docker network inspect food-app-network >/dev/null 2>&1 || docker network create food-app-network
+                            '''
                         }
                     }
                 }
