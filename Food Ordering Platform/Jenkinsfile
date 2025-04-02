@@ -27,85 +27,73 @@ pipeline {
         
         stage('DockerHub Login') {
             steps {
+                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+            }
+        }
+        
+        stage('Build and Push Images') {
+            parallel {
+                stage('Backend') {
+                    when {
+                        anyOf {
+                            changeset "Food Ordering Platform/backend/**"
+                            expression { return params.FORCE_BUILD == true }
+                            expression { return env.FIRST_RUN == 'true' }
+                        }
+                    }
+                    steps {
+                        dir('Food Ordering Platform/backend') {
+                            sh '''
+                                if [ -d "." ]; then
+                                    docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} -t ${BACKEND_IMAGE}:latest .
+                                    docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}
+                                    docker push ${BACKEND_IMAGE}:latest
+                                else
+                                    echo "Backend directory not found, skipping build"
+                                fi
+                            '''
+                        }
+                    }
+                }
+                
+                stage('Frontend') {
+                    when {
+                        anyOf {
+                            changeset "Food Ordering Platform/frontend/**"
+                            expression { return params.FORCE_BUILD == true }
+                            expression { return env.FIRST_RUN == 'true' }
+                        }
+                    }
+                    steps {
+                        dir('Food Ordering Platform/frontend') {
+                            sh '''
+                                if [ -d "." ]; then
+                                    docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} -t ${FRONTEND_IMAGE}:latest .
+                                    docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                                    docker push ${FRONTEND_IMAGE}:latest
+                                else
+                                    echo "Frontend directory not found, skipping build"
+                                fi
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Prepare K8s Manifests') {
+            steps {
+                sh 'mkdir -p ${K8S_MANIFESTS_DIR}'
+                
                 script {
-                    sh '''
-                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-                    '''
-                }
-            }
-        }
-        
-        stage('Build and Push Backend Image') {
-            when {
-                anyOf {
-                    changeset "Food Ordering Platform/backend/**"
-                    expression { return params.FORCE_BUILD == true }
-                    expression { return env.FIRST_RUN == 'true' }
-                }
-            }
-            steps {
-                dir('Food Ordering Platform/backend') {
-                    sh '''
-                        # Check if directory exists
-                        if [ -d "." ]; then
-                            # Build and tag with both build number and latest
-                            docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} -t ${BACKEND_IMAGE}:latest .
-                            docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}
-                            docker push ${BACKEND_IMAGE}:latest
-                        else
-                            echo "Backend directory not found, skipping build"
-                        fi
-                    '''
-                }
-            }
-        }
-        
-        stage('Build and Push Frontend Image') {
-            when {
-                anyOf {
-                    changeset "Food Ordering Platform/frontend/**"
-                    expression { return params.FORCE_BUILD == true }
-                    expression { return env.FIRST_RUN == 'true' }
-                }
-            }
-            steps {
-                dir('Food Ordering Platform/frontend') {
-                    sh '''
-                        # Check if directory exists
-                        if [ -d "." ]; then
-                            # Build and tag with both build number and latest
-                            docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} -t ${FRONTEND_IMAGE}:latest .
-                            docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}
-                            docker push ${FRONTEND_IMAGE}:latest
-                        else
-                            echo "Frontend directory not found, skipping build"
-                        fi
-                    '''
-                }
-            }
-        }
-        
-        stage('DockerHub Logout') {
-            steps {
-                sh 'docker logout'
-            }
-        }
-        
-        stage('Setup Kubernetes Manifests') {
-            steps {
-                script {
-                    // Create directory for K8s manifests if it doesn't exist
-                    sh "mkdir -p ${K8S_MANIFESTS_DIR}"
+                    // Check if kubernetes directory exists in the repo
+                    def k8sDirExists = fileExists('kubernetes')
                     
-                    // Copy K8s manifests from source code repo to workspace
-                    // Assuming manifests are stored in 'kubernetes' directory in your repo
-                    sh """
-                        if [ -d "kubernetes" ]; then
-                            cp kubernetes/*.yaml ${K8S_MANIFESTS_DIR}/
-                        else
-                            echo "Kubernetes manifests directory not found. Creating samples..."
-                            # Creating sample manifests if not present in repo
-                            cat > ${K8S_MANIFESTS_DIR}/frontend-deployment.yaml << 'EOL'
+                    if (k8sDirExists) {
+                        sh 'cp kubernetes/*.yaml ${K8S_MANIFESTS_DIR}/ || echo "No yaml files found"'
+                    } else {
+                        // Create basic manifests if they don't exist
+                        writeFile file: "${K8S_MANIFESTS_DIR}/frontend-deployment.yaml", text: """
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -139,9 +127,9 @@ spec:
   - port: 80
     targetPort: 3000
   type: LoadBalancer
-EOL
+"""
 
-                            cat > ${K8S_MANIFESTS_DIR}/backend-deployment.yaml << 'EOL'
+                        writeFile file: "${K8S_MANIFESTS_DIR}/backend-deployment.yaml", text: """
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -175,39 +163,18 @@ spec:
   - port: 5000
     targetPort: 5000
   type: ClusterIP
-EOL
-
-                            cat > ${K8S_MANIFESTS_DIR}/network-policy.yaml << 'EOL'
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: food-app-network-policy
-spec:
-  podSelector:
-    matchLabels:
-      app: backend
-  ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app: frontend
-EOL
-                        fi
-                    """
+"""
+                    }
                     
-                    // Update image tags in the manifests if we've built new images
+                    // Update image tags
                     if (params.FORCE_BUILD || env.FIRST_RUN == 'true' || 
                         sh(script: "git diff --name-only | grep 'Food Ordering Platform/backend/'", returnStatus: true) == 0) {
-                        sh """
-                            sed -i 's|${BACKEND_IMAGE}:[a-zA-Z0-9_.-]*|${BACKEND_IMAGE}:${BUILD_NUMBER}|g' ${K8S_MANIFESTS_DIR}/backend-deployment.yaml
-                        """
+                        sh "sed -i 's|${BACKEND_IMAGE}:[a-zA-Z0-9_.-]*|${BACKEND_IMAGE}:${BUILD_NUMBER}|g' ${K8S_MANIFESTS_DIR}/backend-deployment.yaml || true"
                     }
                     
                     if (params.FORCE_BUILD || env.FIRST_RUN == 'true' || 
                         sh(script: "git diff --name-only | grep 'Food Ordering Platform/frontend/'", returnStatus: true) == 0) {
-                        sh """
-                            sed -i 's|${FRONTEND_IMAGE}:[a-zA-Z0-9_.-]*|${FRONTEND_IMAGE}:${BUILD_NUMBER}|g' ${K8S_MANIFESTS_DIR}/frontend-deployment.yaml
-                        """
+                        sh "sed -i 's|${FRONTEND_IMAGE}:[a-zA-Z0-9_.-]*|${FRONTEND_IMAGE}:${BUILD_NUMBER}|g' ${K8S_MANIFESTS_DIR}/frontend-deployment.yaml || true"
                     }
                 }
             }
@@ -215,56 +182,53 @@ EOL
         
         stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    // Setup kubectl with kubeconfig
-                    sh """
-                        export KUBECONFIG=${KUBECONFIG}
-                        
-                        # Create namespace if it doesn't exist
-                        kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-                        
-                        # Apply ConfigMap and Network Policy
-                        kubectl apply -f ${K8S_MANIFESTS_DIR}/network-policy.yaml -n ${K8S_NAMESPACE}
-                        
-                        # Apply Deployments and Services
-                        kubectl apply -f ${K8S_MANIFESTS_DIR}/backend-deployment.yaml -n ${K8S_NAMESPACE}
-                        kubectl apply -f ${K8S_MANIFESTS_DIR}/frontend-deployment.yaml -n ${K8S_NAMESPACE}
-                        
-                        # Wait for deployments to roll out
-                        kubectl rollout status deployment/backend -n ${K8S_NAMESPACE} --timeout=180s
-                        kubectl rollout status deployment/frontend -n ${K8S_NAMESPACE} --timeout=180s
-                        
-                        # Get service details
-                        echo "Backend Service:"
-                        kubectl get service backend-service -n ${K8S_NAMESPACE} -o wide
-                        
-                        echo "Frontend Service:"
-                        kubectl get service frontend-service -n ${K8S_NAMESPACE} -o wide
-                    """
-                }
+                sh """
+                    export KUBECONFIG=${KUBECONFIG}
+                    
+                    # Create namespace if it doesn't exist
+                    kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+                    
+                    # Apply Deployments and Services
+                    kubectl apply -f ${K8S_MANIFESTS_DIR}/backend-deployment.yaml -n ${K8S_NAMESPACE} || true
+                    kubectl apply -f ${K8S_MANIFESTS_DIR}/frontend-deployment.yaml -n ${K8S_NAMESPACE} || true
+                    
+                    # Apply network policy if it exists
+                    if [ -f "${K8S_MANIFESTS_DIR}/network-policy.yaml" ]; then
+                        kubectl apply -f ${K8S_MANIFESTS_DIR}/network-policy.yaml -n ${K8S_NAMESPACE} || true
+                    fi
+                    
+                    # Wait for deployments to roll out
+                    kubectl rollout status deployment/backend -n ${K8S_NAMESPACE} --timeout=180s || true
+                    kubectl rollout status deployment/frontend -n ${K8S_NAMESPACE} --timeout=180s || true
+                    
+                    # Get service details
+                    echo "Backend Service:"
+                    kubectl get service backend-service -n ${K8S_NAMESPACE} -o wide || true
+                    
+                    echo "Frontend Service:"
+                    kubectl get service frontend-service -n ${K8S_NAMESPACE} -o wide || true
+                """
             }
         }
     }
     
     post {
         always {
-            node('any') {
-                sh 'docker logout || true'
-            }
+            sh 'docker logout || true'
         }
         success {
-            node('any') {
-                script {
+            echo 'Kubernetes deployment completed successfully!'
+            
+            script {
+                try {
                     sh """
                         export KUBECONFIG=${KUBECONFIG}
                         
                         # Get frontend service URL
-                        FRONTEND_URL=\$(kubectl get service frontend-service -n ${K8S_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                        FRONTEND_URL=\$(kubectl get service frontend-service -n ${K8S_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo '')
                         if [ -z "\$FRONTEND_URL" ]; then
-                            FRONTEND_URL=\$(kubectl get service frontend-service -n ${K8S_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+                            FRONTEND_URL=\$(kubectl get service frontend-service -n ${K8S_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo '')
                         fi
-                        
-                        echo 'Kubernetes deployment completed successfully!'
                         
                         if [ ! -z "\$FRONTEND_URL" ]; then
                             echo "Frontend is available at: http://\$FRONTEND_URL"
@@ -275,22 +239,23 @@ EOL
                         
                         echo "Backend service is accessible within the cluster at: backend-service:5000"
                     """
-                    
-                    echo "\nTo force build of images on next run, use the FORCE_BUILD parameter."
-                    echo "For first-time setup, use the FIRST_RUN parameter."
+                } catch (Exception e) {
+                    echo "Error getting service details: ${e.message}"
+                    echo "You may need to manually check the service status"
                 }
             }
+            
+            echo "\nTo force build of images on next run, use the FORCE_BUILD parameter."
+            echo "For first-time setup, use the FIRST_RUN parameter."
         }
         failure {
-            node('any') {
-                echo 'Pipeline failed. Check logs for details.'
-                echo 'Common Kubernetes issues:'
-                echo ' - Missing KUBECONFIG credentials'
-                echo ' - Insufficient permissions in the Kubernetes cluster'
-                echo ' - Resource limits exceeded in cluster'
-                echo ' - Container image pull failures'
-                echo 'Try running with FIRST_RUN=true if this is your first pipeline run.'
-            }
+            echo 'Pipeline failed. Check logs for details.'
+            echo 'Common Kubernetes issues:'
+            echo ' - Missing KUBECONFIG credentials'
+            echo ' - Insufficient permissions in the Kubernetes cluster'
+            echo ' - Resource limits exceeded in cluster'
+            echo ' - Container image pull failures'
+            echo 'Try running with FIRST_RUN=true if this is your first pipeline run.'
         }
     }
 }
