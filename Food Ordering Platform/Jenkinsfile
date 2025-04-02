@@ -25,11 +25,7 @@ pipeline {
         
         stage('DockerHub Login') {
             steps {
-                script {
-                    sh '''
-                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-                    '''
-                }
+                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
             }
         }
         
@@ -91,12 +87,10 @@ pipeline {
         
         stage('Create Kubernetes Manifests') {
             steps {
-                script {
-                    // Create kubernetes directory if it doesn't exist
-                    sh 'mkdir -p kubernetes'
-                    
-                    // Create frontend deployment file
-                    writeFile file: 'kubernetes/frontend-deployment.yaml', text: """
+                sh 'mkdir -p kubernetes'
+                
+                // Create frontend deployment file
+                writeFile file: 'kubernetes/frontend-deployment.yaml', text: """
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -120,25 +114,6 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
-        resources:
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
-          requests:
-            cpu: "200m"
-            memory: "256Mi"
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 15
-          periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -146,7 +121,6 @@ metadata:
   name: frontend-service
   labels:
     app: frontend
-    app.kubernetes.io/part-of: food-ordering-app
 spec:
   selector:
     app: frontend
@@ -155,16 +129,15 @@ spec:
     targetPort: 3000
   type: LoadBalancer
 """
-                    
-                    // Create backend deployment file
-                    writeFile file: 'kubernetes/backend-deployment.yaml', text: """
+                
+                // Create backend deployment file
+                writeFile file: 'kubernetes/backend-deployment.yaml', text: """
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
   labels:
     app: backend
-    app.kubernetes.io/part-of: food-ordering-app
 spec:
   replicas: 2
   selector:
@@ -181,25 +154,6 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 5000
-        resources:
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
-          requests:
-            cpu: "200m"
-            memory: "256Mi"
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 5000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 5000
-          initialDelaySeconds: 15
-          periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -207,7 +161,6 @@ metadata:
   name: backend-service
   labels:
     app: backend
-    app.kubernetes.io/part-of: food-ordering-app
 spec:
   selector:
     app: backend
@@ -216,50 +169,15 @@ spec:
     targetPort: 5000
   type: ClusterIP
 """
-                    
-                    // Create network policy file
-                    writeFile file: 'kubernetes/network-policy.yaml', text: """
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: food-app-network-policy
-  labels:
-    app.kubernetes.io/part-of: food-ordering-app
-spec:
-  podSelector:
-    matchLabels:
-      app: backend
-  ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app: frontend
-    ports:
-    - protocol: TCP
-      port: 5000
-  egress:
-  - {}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: food-app-config
-  labels:
-    app.kubernetes.io/part-of: food-ordering-app
-data:
-  API_URL: "http://backend-service:5000"
-  NODE_ENV: "production"
-"""
-                    
-                    // Create kustomization file
-                    writeFile file: 'kubernetes/kustomization.yaml', text: """
+                
+                // Create kustomization file
+                writeFile file: 'kubernetes/kustomization.yaml', text: """
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
   - frontend-deployment.yaml
   - backend-deployment.yaml
-  - network-policy.yaml
 
 namePrefix: food-app-
 
@@ -269,61 +187,20 @@ commonLabels:
   app.kubernetes.io/part-of: food-ordering-app
   app.kubernetes.io/managed-by: jenkins
 """
-                    
-                    // Create deployment instructions
-                    writeFile file: 'kubernetes/README.md', text: """
-# Kubernetes Deployment for Food Ordering Platform
-
-## Manual Deployment Instructions
-
-To deploy the application to Kubernetes:
-
-1. Ensure you have kubectl configured correctly to access your cluster
-2. Run the following commands:
-
-```bash
-# Create namespace if it doesn't exist
-kubectl create namespace ${K8S_NAMESPACE}
-
-# Apply all manifests
-kubectl apply -k kubernetes/
-
-# Check deployment status
-kubectl rollout status deployment/food-app-frontend -n ${K8S_NAMESPACE}
-kubectl rollout status deployment/food-app-backend -n ${K8S_NAMESPACE}
-
-# Get frontend service URL
-kubectl get service food-app-frontend-service -n ${K8S_NAMESPACE}
-```
-
-## Accessing the Application
-
-- Frontend: Access via the LoadBalancer external IP/hostname at port 80
-- Backend: Internal access at \`food-app-backend-service:5000\` within the cluster
-"""
-                    
-                    echo "Kubernetes manifests created in 'kubernetes/' directory"
-                    echo "To deploy manually, run: kubectl apply -k kubernetes/"
-                }
+                
+                echo "Kubernetes manifests created in 'kubernetes/' directory"
+                echo "To deploy manually, run: kubectl apply -k kubernetes/"
             }
         }
     }
     
     post {
         always {
-            echo "Pipeline completed. Docker images ${FRONTEND_IMAGE}:${BUILD_NUMBER} and ${BACKEND_IMAGE}:${BUILD_NUMBER} are available."
+            echo "Pipeline completed"
         }
         success {
-            echo """
-Kubernetes manifests have been created in the 'kubernetes/' directory of the workspace.
-
-To manually deploy to Kubernetes:
-1. Download the kubernetes directory from the workspace
-2. Run: kubectl apply -k kubernetes/
-
-Frontend: ${FRONTEND_IMAGE}:${BUILD_NUMBER}
-Backend: ${BACKEND_IMAGE}:${BUILD_NUMBER}
-"""
+            echo "Kubernetes manifests have been created in the 'kubernetes/' directory of the workspace."
+            echo "To manually deploy to Kubernetes: kubectl apply -k kubernetes/"
         }
         failure {
             echo "Pipeline failed. Check logs for details."
