@@ -4,61 +4,24 @@ pipeline {
     parameters {
         booleanParam(defaultValue: false, description: 'Force build and deployment of images', name: 'FORCE_BUILD')
         booleanParam(defaultValue: false, description: 'First run - build all images', name: 'FIRST_RUN')
+        string(defaultValue: 'default', description: 'Kubernetes namespace to deploy to', name: 'K8S_NAMESPACE')
     }
     
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
-        TERRAFORM_DIR = "/opt/jenkins-shared/terraform"
-        ANSIBLE_DIR = "/opt/jenkins-shared/ansible" 
+        KUBECONFIG = credentials('kube-config')
         BACKEND_IMAGE = "sangeeth108/express-backend"
         FRONTEND_IMAGE = "sangeeth108/nextjs-frontend"
-        SERVER_IP = "localhost"
         DOCKER_BUILDKIT = '0'
         FIRST_RUN = "${params.FIRST_RUN}"
+        K8S_NAMESPACE = "${params.K8S_NAMESPACE}"
+        K8S_MANIFESTS_DIR = "${WORKSPACE}/k8s-manifests"
     }
     
     stages {
         stage('Checkout Code') {
             steps {
                 checkout scm
-            }
-        }
-        
-        stage('Infrastructure Setup') {
-            stages {
-                stage('Terraform Init') {
-                    steps {
-                        dir("${TERRAFORM_DIR}") {
-                            sh 'terraform init'
-                        }
-                    }
-                }
-                
-                stage('Terraform Apply') {
-                    steps {
-                        dir("${TERRAFORM_DIR}") {
-                            sh 'terraform apply -auto-approve'
-                            script {
-                                sh 'echo "Using local Docker setup"'
-                            }
-                        }
-                    }
-                }
-                
-                stage('Configure Docker with Ansible') {
-                    steps {
-                        dir("${ANSIBLE_DIR}") {
-                            // Using a different approach to avoid sudo issues
-                            sh '''
-                                # Ensure Docker is running
-                                systemctl status docker || sudo systemctl start docker
-                                
-                                # Create network if it doesn't exist
-                                docker network inspect food-app-network >/dev/null 2>&1 || docker network create food-app-network
-                            '''
-                        }
-                    }
-                }
             }
         }
         
@@ -128,59 +91,63 @@ pipeline {
             }
         }
         
-        stage('Deploy to Local Docker') {
+        stage('Setup Kubernetes Manifests') {
             steps {
                 script {
-                    // Check if backend image exists locally or remotely
-                    def backendExists = sh(script: "docker image inspect ${BACKEND_IMAGE}:${BUILD_NUMBER} >/dev/null 2>&1 || docker pull ${BACKEND_IMAGE}:${BUILD_NUMBER} >/dev/null 2>&1", returnStatus: true) == 0
+                    // Create directory for K8s manifests if it doesn't exist
+                    sh "mkdir -p ${K8S_MANIFESTS_DIR}"
                     
-                    // Check if frontend image exists locally or remotely
-                    def frontendExists = sh(script: "docker image inspect ${FRONTEND_IMAGE}:${BUILD_NUMBER} >/dev/null 2>&1 || docker pull ${FRONTEND_IMAGE}:${BUILD_NUMBER} >/dev/null 2>&1", returnStatus: true) == 0
+                    // Copy K8s manifests to workspace
+                    writeFile file: "${K8S_MANIFESTS_DIR}/frontend-deployment.yaml", text: readFile('frontend-deployment.yaml')
+                    writeFile file: "${K8S_MANIFESTS_DIR}/backend-deployment.yaml", text: readFile('backend-deployment.yaml')
+                    writeFile file: "${K8S_MANIFESTS_DIR}/network-policy.yaml", text: readFile('network-policy.yaml')
                     
-                    // If no new images, use latest or default images
-                    if (!backendExists) {
-                        echo "Backend image ${BACKEND_IMAGE}:${BUILD_NUMBER} not found. Using latest or default image instead."
-                        sh "docker pull ${BACKEND_IMAGE}:latest || echo 'Using default backend image or skipping backend deployment'"
+                    // Update image tags in the manifests if we've built new images
+                    if (params.FORCE_BUILD || env.FIRST_RUN == 'true' || 
+                        sh(script: "git diff --name-only | grep 'Food Ordering Platform/backend/'", returnStatus: true) == 0) {
+                        sh """
+                            sed -i 's|${BACKEND_IMAGE}:latest|${BACKEND_IMAGE}:${BUILD_NUMBER}|g' ${K8S_MANIFESTS_DIR}/backend-deployment.yaml
+                        """
                     }
                     
-                    if (!frontendExists) {
-                        echo "Frontend image ${FRONTEND_IMAGE}:${BUILD_NUMBER} not found. Using latest or default image instead."
-                        sh "docker pull ${FRONTEND_IMAGE}:latest || echo 'Using default frontend image or skipping frontend deployment'"
+                    if (params.FORCE_BUILD || env.FIRST_RUN == 'true' || 
+                        sh(script: "git diff --name-only | grep 'Food Ordering Platform/frontend/'", returnStatus: true) == 0) {
+                        sh """
+                            sed -i 's|${FRONTEND_IMAGE}:latest|${FRONTEND_IMAGE}:${BUILD_NUMBER}|g' ${K8S_MANIFESTS_DIR}/frontend-deployment.yaml
+                        """
                     }
-                    
-                    // Deploy backend if it exists (either current build or latest)
-                    sh '''
-                        # Remove existing backend container if it exists
-                        docker rm -f backend || true
+                }
+            }
+        }
+        
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    // Setup kubectl with kubeconfig
+                    sh """
+                        export KUBECONFIG=${KUBECONFIG}
                         
-                        # Check which backend image version exists
-                        if docker image inspect ${BACKEND_IMAGE}:${BUILD_NUMBER} >/dev/null 2>&1; then
-                            # Run new backend container with current build
-                            docker run -d -p 5000:5000 --name backend --network food-app-network ${BACKEND_IMAGE}:${BUILD_NUMBER} || true
-                        elif docker image inspect ${BACKEND_IMAGE}:latest >/dev/null 2>&1; then
-                            # Run with latest if current doesn't exist
-                            docker run -d -p 5000:5000 --name backend --network food-app-network ${BACKEND_IMAGE}:latest || true
-                        else
-                            echo "No backend image available. Skipping backend deployment."
-                        fi
+                        # Create namespace if it doesn't exist
+                        kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
                         
-                        # Remove existing frontend container if it exists
-                        docker rm -f frontend || true
+                        # Apply ConfigMap and Network Policy
+                        kubectl apply -f ${K8S_MANIFESTS_DIR}/network-policy.yaml -n ${K8S_NAMESPACE}
                         
-                        # Check which frontend image version exists
-                        if docker image inspect ${FRONTEND_IMAGE}:${BUILD_NUMBER} >/dev/null 2>&1; then
-                            # Run new frontend container with current build
-                            docker run -d -p 3000:3000 --name frontend --network food-app-network ${FRONTEND_IMAGE}:${BUILD_NUMBER} || true
-                        elif docker image inspect ${FRONTEND_IMAGE}:latest >/dev/null 2>&1; then
-                            # Run with latest if current doesn't exist
-                            docker run -d -p 3000:3000 --name frontend --network food-app-network ${FRONTEND_IMAGE}:latest || true
-                        else
-                            echo "No frontend image available. Skipping frontend deployment."
-                        fi
+                        # Apply Deployments and Services
+                        kubectl apply -f ${K8S_MANIFESTS_DIR}/backend-deployment.yaml -n ${K8S_NAMESPACE}
+                        kubectl apply -f ${K8S_MANIFESTS_DIR}/frontend-deployment.yaml -n ${K8S_NAMESPACE}
                         
-                        # Verify running containers
-                        docker ps
-                    '''
+                        # Wait for deployments to roll out
+                        kubectl rollout status deployment/backend -n ${K8S_NAMESPACE} --timeout=180s
+                        kubectl rollout status deployment/frontend -n ${K8S_NAMESPACE} --timeout=180s
+                        
+                        # Get service details
+                        echo "Backend Service:"
+                        kubectl get service backend-service -n ${K8S_NAMESPACE} -o wide
+                        
+                        echo "Frontend Service:"
+                        kubectl get service frontend-service -n ${K8S_NAMESPACE} -o wide
+                    """
                 }
             }
         }
@@ -192,22 +159,26 @@ pipeline {
         }
         success {
             script {
-                def backendRunning = sh(script: 'docker ps | grep backend || true', returnStdout: true).trim()
-                def frontendRunning = sh(script: 'docker ps | grep frontend || true', returnStdout: true).trim()
-                
-                echo 'Pipeline completed successfully!'
-                
-                if (backendRunning) {
-                    echo "Backend API is running and available at: http://localhost:5000"
-                } else {
-                    echo "Note: Backend container is not running"
-                }
-                
-                if (frontendRunning) {
-                    echo "Frontend is running and available at: http://localhost:3000"
-                } else {
-                    echo "Note: Frontend container is not running"
-                }
+                sh """
+                    export KUBECONFIG=${KUBECONFIG}
+                    
+                    # Get frontend service URL
+                    FRONTEND_URL=\$(kubectl get service frontend-service -n ${K8S_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                    if [ -z "\$FRONTEND_URL" ]; then
+                        FRONTEND_URL=\$(kubectl get service frontend-service -n ${K8S_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+                    fi
+                    
+                    echo 'Kubernetes deployment completed successfully!'
+                    
+                    if [ ! -z "\$FRONTEND_URL" ]; then
+                        echo "Frontend is available at: http://\$FRONTEND_URL"
+                    else
+                        echo "Frontend service is deployed but doesn't have an external IP yet"
+                        echo "Check service status: kubectl get service frontend-service -n ${K8S_NAMESPACE}"
+                    fi
+                    
+                    echo "Backend service is accessible within the cluster at: backend-service:5000"
+                """
                 
                 echo "\nTo force build of images on next run, use the FORCE_BUILD parameter."
                 echo "For first-time setup, use the FIRST_RUN parameter."
@@ -215,10 +186,11 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed. Check logs for details.'
-            echo 'Common issues:'
-            echo ' - Missing Docker images'
-            echo ' - Permission problems with Docker'
-            echo ' - Project directories not found'
+            echo 'Common Kubernetes issues:'
+            echo ' - Missing KUBECONFIG credentials'
+            echo ' - Insufficient permissions in the Kubernetes cluster'
+            echo ' - Resource limits exceeded in cluster'
+            echo ' - Container image pull failures'
             echo 'Try running with FIRST_RUN=true if this is your first pipeline run.'
         }
     }

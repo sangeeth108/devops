@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: food-app-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: frontend
+    ports:
+    - protocol: TCP
+      port: 5000
+  egress:
+  - {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: food-app-config
+data:
+  API_URL: "http://backend-service:5000"
+  NODE_ENV: "production"
