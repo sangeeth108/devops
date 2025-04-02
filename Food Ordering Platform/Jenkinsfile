@@ -248,12 +248,12 @@ EOL
     
     post {
         always {
-            node {
+            node('any') {
                 sh 'docker logout || true'
             }
         }
         success {
-            node {
+            node('any') {
                 script {
                     sh """
                         export KUBECONFIG=${KUBECONFIG}
@@ -282,7 +282,7 @@ EOL
             }
         }
         failure {
-            node {
+            node('any') {
                 echo 'Pipeline failed. Check logs for details.'
                 echo 'Common Kubernetes issues:'
                 echo ' - Missing KUBECONFIG credentials'
