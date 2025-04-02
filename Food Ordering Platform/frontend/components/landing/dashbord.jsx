@@ -63,7 +63,7 @@ export default function Home() {
               </span>
             </h1>
             <p className="mt-4 text-xl text-white/90 max-w-md mx-auto md:mx-0">
-              Experience the best local restaurants at your fingertips. Fresh, fast, and right to your door.
+              Experience the best local restaurants at your fingertips. Fresh, fast, and right to your uor.
             </p>
           </div>
           
