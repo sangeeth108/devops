@@ -4,6 +4,7 @@ metadata:
   name: backend
   labels:
     app: backend
+    app.kubernetes.io/part-of: food-ordering-app
 spec:
   replicas: 2
   selector:
@@ -39,11 +40,20 @@ spec:
             port: 5000
           initialDelaySeconds: 15
           periodSeconds: 20
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: food-app-config
+              key: NODE_ENV
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: backend-service
+  labels:
+    app: backend
+    app.kubernetes.io/part-of: food-ordering-app
 spec:
   selector:
     app: backend

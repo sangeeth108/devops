@@ -19,8 +19,3 @@ images:
     newTag: latest
   - name: sangeeth108/express-backend
     newTag: latest
-
-configMapGenerator:
-  - name: app-env-config
-    literals:
-      - NODE_ENV=production

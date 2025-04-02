@@ -9,13 +9,11 @@ pipeline {
     
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
-        KUBECONFIG = credentials('kube-config')
         BACKEND_IMAGE = "sangeeth108/express-backend"
         FRONTEND_IMAGE = "sangeeth108/nextjs-frontend"
         DOCKER_BUILDKIT = '0'
         FIRST_RUN = "${params.FIRST_RUN}"
         K8S_NAMESPACE = "${params.K8S_NAMESPACE}"
-        K8S_MANIFESTS_DIR = "${WORKSPACE}/k8s-manifests"
     }
     
     stages {
@@ -27,79 +25,85 @@ pipeline {
         
         stage('DockerHub Login') {
             steps {
-                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-            }
-        }
-        
-        stage('Build and Push Images') {
-            parallel {
-                stage('Backend') {
-                    when {
-                        anyOf {
-                            changeset "Food Ordering Platform/backend/**"
-                            expression { return params.FORCE_BUILD == true }
-                            expression { return env.FIRST_RUN == 'true' }
-                        }
-                    }
-                    steps {
-                        dir('Food Ordering Platform/backend') {
-                            sh '''
-                                if [ -d "." ]; then
-                                    docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} -t ${BACKEND_IMAGE}:latest .
-                                    docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}
-                                    docker push ${BACKEND_IMAGE}:latest
-                                else
-                                    echo "Backend directory not found, skipping build"
-                                fi
-                            '''
-                        }
-                    }
-                }
-                
-                stage('Frontend') {
-                    when {
-                        anyOf {
-                            changeset "Food Ordering Platform/frontend/**"
-                            expression { return params.FORCE_BUILD == true }
-                            expression { return env.FIRST_RUN == 'true' }
-                        }
-                    }
-                    steps {
-                        dir('Food Ordering Platform/frontend') {
-                            sh '''
-                                if [ -d "." ]; then
-                                    docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} -t ${FRONTEND_IMAGE}:latest .
-                                    docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}
-                                    docker push ${FRONTEND_IMAGE}:latest
-                                else
-                                    echo "Frontend directory not found, skipping build"
-                                fi
-                            '''
-                        }
-                    }
-                }
-            }
-        }
-        
-        stage('Prepare K8s Manifests') {
-            steps {
-                sh 'mkdir -p ${K8S_MANIFESTS_DIR}'
-                
                 script {
-                    // Check if kubernetes directory exists in the repo
-                    def k8sDirExists = fileExists('kubernetes')
+                    sh '''
+                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                    '''
+                }
+            }
+        }
+        
+        stage('Build and Push Backend Image') {
+            when {
+                anyOf {
+                    changeset "Food Ordering Platform/backend/**"
+                    expression { return params.FORCE_BUILD == true }
+                    expression { return env.FIRST_RUN == 'true' }
+                }
+            }
+            steps {
+                dir('Food Ordering Platform/backend') {
+                    sh '''
+                        # Check if directory exists
+                        if [ -d "." ]; then
+                            # Build and tag with both build number and latest
+                            docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} -t ${BACKEND_IMAGE}:latest .
+                            docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}
+                            docker push ${BACKEND_IMAGE}:latest
+                        else
+                            echo "Backend directory not found, skipping build"
+                        fi
+                    '''
+                }
+            }
+        }
+        
+        stage('Build and Push Frontend Image') {
+            when {
+                anyOf {
+                    changeset "Food Ordering Platform/frontend/**"
+                    expression { return params.FORCE_BUILD == true }
+                    expression { return env.FIRST_RUN == 'true' }
+                }
+            }
+            steps {
+                dir('Food Ordering Platform/frontend') {
+                    sh '''
+                        # Check if directory exists
+                        if [ -d "." ]; then
+                            # Build and tag with both build number and latest
+                            docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} -t ${FRONTEND_IMAGE}:latest .
+                            docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                            docker push ${FRONTEND_IMAGE}:latest
+                        else
+                            echo "Frontend directory not found, skipping build"
+                        fi
+                    '''
+                }
+            }
+        }
+        
+        stage('DockerHub Logout') {
+            steps {
+                sh 'docker logout'
+            }
+        }
+        
+        stage('Create Kubernetes Manifests') {
+            steps {
+                script {
+                    // Create kubernetes directory if it doesn't exist
+                    sh 'mkdir -p kubernetes'
                     
-                    if (k8sDirExists) {
-                        sh 'cp kubernetes/*.yaml ${K8S_MANIFESTS_DIR}/ || echo "No yaml files found"'
-                    } else {
-                        // Create basic manifests if they don't exist
-                        writeFile file: "${K8S_MANIFESTS_DIR}/frontend-deployment.yaml", text: """
+                    // Create frontend deployment file
+                    writeFile file: 'kubernetes/frontend-deployment.yaml', text: """
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
   labels:
     app: frontend
+    app.kubernetes.io/part-of: food-ordering-app
 spec:
   replicas: 2
   selector:
@@ -112,14 +116,37 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ${FRONTEND_IMAGE}:latest
+        image: ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+        imagePullPolicy: Always
         ports:
         - containerPort: 3000
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend-service
+  labels:
+    app: frontend
+    app.kubernetes.io/part-of: food-ordering-app
 spec:
   selector:
     app: frontend
@@ -128,14 +155,16 @@ spec:
     targetPort: 3000
   type: LoadBalancer
 """
-
-                        writeFile file: "${K8S_MANIFESTS_DIR}/backend-deployment.yaml", text: """
+                    
+                    // Create backend deployment file
+                    writeFile file: 'kubernetes/backend-deployment.yaml', text: """
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
   labels:
     app: backend
+    app.kubernetes.io/part-of: food-ordering-app
 spec:
   replicas: 2
   selector:
@@ -148,14 +177,37 @@ spec:
     spec:
       containers:
       - name: backend
-        image: ${BACKEND_IMAGE}:latest
+        image: ${BACKEND_IMAGE}:${BUILD_NUMBER}
+        imagePullPolicy: Always
         ports:
         - containerPort: 5000
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 15
+          periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: backend-service
+  labels:
+    app: backend
+    app.kubernetes.io/part-of: food-ordering-app
 spec:
   selector:
     app: backend
@@ -164,98 +216,117 @@ spec:
     targetPort: 5000
   type: ClusterIP
 """
-                    }
                     
-                    // Update image tags
-                    if (params.FORCE_BUILD || env.FIRST_RUN == 'true' || 
-                        sh(script: "git diff --name-only | grep 'Food Ordering Platform/backend/'", returnStatus: true) == 0) {
-                        sh "sed -i 's|${BACKEND_IMAGE}:[a-zA-Z0-9_.-]*|${BACKEND_IMAGE}:${BUILD_NUMBER}|g' ${K8S_MANIFESTS_DIR}/backend-deployment.yaml || true"
-                    }
+                    // Create network policy file
+                    writeFile file: 'kubernetes/network-policy.yaml', text: """
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: food-app-network-policy
+  labels:
+    app.kubernetes.io/part-of: food-ordering-app
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: frontend
+    ports:
+    - protocol: TCP
+      port: 5000
+  egress:
+  - {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: food-app-config
+  labels:
+    app.kubernetes.io/part-of: food-ordering-app
+data:
+  API_URL: "http://backend-service:5000"
+  NODE_ENV: "production"
+"""
                     
-                    if (params.FORCE_BUILD || env.FIRST_RUN == 'true' || 
-                        sh(script: "git diff --name-only | grep 'Food Ordering Platform/frontend/'", returnStatus: true) == 0) {
-                        sh "sed -i 's|${FRONTEND_IMAGE}:[a-zA-Z0-9_.-]*|${FRONTEND_IMAGE}:${BUILD_NUMBER}|g' ${K8S_MANIFESTS_DIR}/frontend-deployment.yaml || true"
-                    }
+                    // Create kustomization file
+                    writeFile file: 'kubernetes/kustomization.yaml', text: """
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - frontend-deployment.yaml
+  - backend-deployment.yaml
+  - network-policy.yaml
+
+namePrefix: food-app-
+
+namespace: ${K8S_NAMESPACE}
+
+commonLabels:
+  app.kubernetes.io/part-of: food-ordering-app
+  app.kubernetes.io/managed-by: jenkins
+"""
+                    
+                    // Create deployment instructions
+                    writeFile file: 'kubernetes/README.md', text: """
+# Kubernetes Deployment for Food Ordering Platform
+
+## Manual Deployment Instructions
+
+To deploy the application to Kubernetes:
+
+1. Ensure you have kubectl configured correctly to access your cluster
+2. Run the following commands:
+
+```bash
+# Create namespace if it doesn't exist
+kubectl create namespace ${K8S_NAMESPACE}
+
+# Apply all manifests
+kubectl apply -k kubernetes/
+
+# Check deployment status
+kubectl rollout status deployment/food-app-frontend -n ${K8S_NAMESPACE}
+kubectl rollout status deployment/food-app-backend -n ${K8S_NAMESPACE}
+
+# Get frontend service URL
+kubectl get service food-app-frontend-service -n ${K8S_NAMESPACE}
+```
+
+## Accessing the Application
+
+- Frontend: Access via the LoadBalancer external IP/hostname at port 80
+- Backend: Internal access at \`food-app-backend-service:5000\` within the cluster
+"""
+                    
+                    echo "Kubernetes manifests created in 'kubernetes/' directory"
+                    echo "To deploy manually, run: kubectl apply -k kubernetes/"
                 }
-            }
-        }
-        
-        stage('Deploy to Kubernetes') {
-            steps {
-                sh """
-                    export KUBECONFIG=${KUBECONFIG}
-                    
-                    # Create namespace if it doesn't exist
-                    kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-                    
-                    # Apply Deployments and Services
-                    kubectl apply -f ${K8S_MANIFESTS_DIR}/backend-deployment.yaml -n ${K8S_NAMESPACE} || true
-                    kubectl apply -f ${K8S_MANIFESTS_DIR}/frontend-deployment.yaml -n ${K8S_NAMESPACE} || true
-                    
-                    # Apply network policy if it exists
-                    if [ -f "${K8S_MANIFESTS_DIR}/network-policy.yaml" ]; then
-                        kubectl apply -f ${K8S_MANIFESTS_DIR}/network-policy.yaml -n ${K8S_NAMESPACE} || true
-                    fi
-                    
-                    # Wait for deployments to roll out
-                    kubectl rollout status deployment/backend -n ${K8S_NAMESPACE} --timeout=180s || true
-                    kubectl rollout status deployment/frontend -n ${K8S_NAMESPACE} --timeout=180s || true
-                    
-                    # Get service details
-                    echo "Backend Service:"
-                    kubectl get service backend-service -n ${K8S_NAMESPACE} -o wide || true
-                    
-                    echo "Frontend Service:"
-                    kubectl get service frontend-service -n ${K8S_NAMESPACE} -o wide || true
-                """
             }
         }
     }
     
     post {
         always {
-            sh 'docker logout || true'
+            echo "Pipeline completed. Docker images ${FRONTEND_IMAGE}:${BUILD_NUMBER} and ${BACKEND_IMAGE}:${BUILD_NUMBER} are available."
         }
         success {
-            echo 'Kubernetes deployment completed successfully!'
-            
-            script {
-                try {
-                    sh """
-                        export KUBECONFIG=${KUBECONFIG}
-                        
-                        # Get frontend service URL
-                        FRONTEND_URL=\$(kubectl get service frontend-service -n ${K8S_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo '')
-                        if [ -z "\$FRONTEND_URL" ]; then
-                            FRONTEND_URL=\$(kubectl get service frontend-service -n ${K8S_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo '')
-                        fi
-                        
-                        if [ ! -z "\$FRONTEND_URL" ]; then
-                            echo "Frontend is available at: http://\$FRONTEND_URL"
-                        else
-                            echo "Frontend service is deployed but doesn't have an external IP yet"
-                            echo "Check service status: kubectl get service frontend-service -n ${K8S_NAMESPACE}"
-                        fi
-                        
-                        echo "Backend service is accessible within the cluster at: backend-service:5000"
-                    """
-                } catch (Exception e) {
-                    echo "Error getting service details: ${e.message}"
-                    echo "You may need to manually check the service status"
-                }
-            }
-            
-            echo "\nTo force build of images on next run, use the FORCE_BUILD parameter."
-            echo "For first-time setup, use the FIRST_RUN parameter."
+            echo """
+Kubernetes manifests have been created in the 'kubernetes/' directory of the workspace.
+
+To manually deploy to Kubernetes:
+1. Download the kubernetes directory from the workspace
+2. Run: kubectl apply -k kubernetes/
+
+Frontend: ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+Backend: ${BACKEND_IMAGE}:${BUILD_NUMBER}
+"""
         }
         failure {
-            echo 'Pipeline failed. Check logs for details.'
-            echo 'Common Kubernetes issues:'
-            echo ' - Missing KUBECONFIG credentials'
-            echo ' - Insufficient permissions in the Kubernetes cluster'
-            echo ' - Resource limits exceeded in cluster'
-            echo ' - Container image pull failures'
-            echo 'Try running with FIRST_RUN=true if this is your first pipeline run.'
+            echo "Pipeline failed. Check logs for details."
         }
     }
 }

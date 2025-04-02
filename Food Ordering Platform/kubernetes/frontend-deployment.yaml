@@ -4,6 +4,7 @@ metadata:
   name: frontend
   labels:
     app: frontend
+    app.kubernetes.io/part-of: food-ordering-app
 spec:
   replicas: 2
   selector:
@@ -39,11 +40,20 @@ spec:
             port: 3000
           initialDelaySeconds: 15
           periodSeconds: 20
+        env:
+        - name: API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: food-app-config
+              key: API_URL
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend-service
+  labels:
+    app: frontend
+    app.kubernetes.io/part-of: food-ordering-app
 spec:
   selector:
     app: frontend
