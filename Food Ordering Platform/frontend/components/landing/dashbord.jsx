@@ -59,11 +59,11 @@ export default function Home() {
             <h1 className="text-4xl md:text-5xl font-extrabold text-white leading-tight">
               <span className="block">Delicious Food </span>
               <span className="block mt-1">
-                <span className="text-yellow-300">Delivered</span> To ME
+                <span className="text-yellow-300">Delivered</span> To UOR
               </span>
             </h1>
             <p className="mt-4 text-xl text-white/90 max-w-md mx-auto md:mx-0">
-              Experience the best local restaurants at your fingertips. Fresh, fast, and right to your uor.
+              Experience the best local restaurants at your fingertips. Fresh, fast, and right to your door.
             </p>
           </div>
           
